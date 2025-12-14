@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   gold_coins INTEGER DEFAULT 0,
   streak INTEGER DEFAULT 0,
   avatar_url TEXT,
+  background_image_url TEXT,
+  last_login_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

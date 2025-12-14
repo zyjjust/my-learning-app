@@ -162,10 +162,12 @@ export default function GamifiedDashboard() {
   const [purchasedItems, setPurchasedItems] = useState<number[]>([])
   const [showPurchasedItems, setShowPurchasedItems] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const backgroundInputRef = useRef<HTMLInputElement>(null)
 
   // AI导师相关状态
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([])
@@ -178,6 +180,55 @@ export default function GamifiedDashboard() {
       loadUserData()
     }
   }, [user])
+
+  // 加载背景图（在组件挂载时和用户状态变化时）
+  useEffect(() => {
+    loadBackgroundImage()
+  }, [user])
+
+  // 加载背景图
+  const loadBackgroundImage = () => {
+    // 优先从 localStorage 加载
+    const savedBg = localStorage.getItem('backgroundImageUrl')
+    if (savedBg) {
+      setBackgroundImageUrl(savedBg)
+      return
+    }
+    // 如果已登录，尝试从 Supabase 加载
+    if (user) {
+      loadBackgroundFromSupabase()
+    } else {
+      // 默认使用哆啦A梦背景图（如果 localStorage 中没有保存的图片）
+      // 使用哆啦A梦相关的背景图片作为默认背景
+      // 备选URL列表，如果第一个不可用会自动尝试下一个
+      const doraemonBackgrounds = [
+        'https://wallpaperaccess.com/full/9503999.jpg', // 哆啦A梦壁纸
+        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1920&q=80', // 备用1
+        'https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=1920&q=80', // 备用2
+      ]
+      const defaultDoraemonBg = doraemonBackgrounds[0]
+      setBackgroundImageUrl(defaultDoraemonBg)
+    }
+  }
+
+  // 从 Supabase 加载背景图
+  const loadBackgroundFromSupabase = async () => {
+    if (!user) return
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("background_image_url")
+        .eq("id", user.id)
+        .single()
+
+      if (!error && data?.background_image_url) {
+        setBackgroundImageUrl(data.background_image_url)
+        localStorage.setItem('backgroundImageUrl', data.background_image_url)
+      }
+    } catch (error) {
+      console.error("Error loading background image:", error)
+    }
+  }
 
   // 从数据库加载用户数据
   const loadUserData = async () => {
@@ -201,6 +252,10 @@ export default function GamifiedDashboard() {
         setGoldCoins(data.gold_coins || 0)
         if (data.avatar_url) {
           setAvatarUrl(data.avatar_url)
+        }
+        if (data.background_image_url) {
+          setBackgroundImageUrl(data.background_image_url)
+          localStorage.setItem('backgroundImageUrl', data.background_image_url)
         }
 
         // 处理连续登录天数
@@ -478,6 +533,107 @@ export default function GamifiedDashboard() {
     }
   }
 
+  // 处理背景图上传
+  const handleBackgroundUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+      alert("请上传图片文件")
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("图片大小不能超过10MB")
+      return
+    }
+
+    try {
+      let imageUrl: string
+
+      // 上传到 Supabase Storage
+      if (user) {
+        const fileExt = file.name.split(".").pop()
+        const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
+        const filePath = `backgrounds/${fileName}`
+
+        // 确保 backgrounds bucket 存在（如果不存在，会在上传时创建，但需要先在 Supabase 中创建）
+        const { error: uploadError } = await supabase.storage
+          .from("backgrounds")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          })
+
+        if (uploadError) {
+          // 如果上传失败，使用 base64 作为备用
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const result = reader.result as string
+            imageUrl = result
+            setBackgroundImageUrl(result)
+            localStorage.setItem('backgroundImageUrl', result)
+            // 保存到数据库
+            saveBackgroundToSupabase(result)
+          }
+          reader.readAsDataURL(file)
+          return
+        }
+
+        // 获取公共 URL
+        const { data } = supabase.storage.from("backgrounds").getPublicUrl(filePath)
+        imageUrl = data.publicUrl
+      } else {
+        // 未登录用户使用 base64
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          imageUrl = result
+          setBackgroundImageUrl(result)
+          localStorage.setItem('backgroundImageUrl', result)
+        }
+        reader.readAsDataURL(file)
+        return
+      }
+
+      // 更新状态和本地存储
+      setBackgroundImageUrl(imageUrl)
+      localStorage.setItem('backgroundImageUrl', imageUrl)
+      
+      // 保存到数据库
+      if (user) {
+        await saveBackgroundToSupabase(imageUrl)
+      }
+    } catch (error) {
+      console.error("Error uploading background:", error)
+      // 备用方案：使用 base64
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        setBackgroundImageUrl(result)
+        localStorage.setItem('backgroundImageUrl', result)
+        if (user) {
+          saveBackgroundToSupabase(result)
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // 保存背景图到 Supabase 数据库
+  const saveBackgroundToSupabase = async (imageUrl: string) => {
+    if (!user) return
+    try {
+      await supabase
+        .from("users")
+        .update({ background_image_url: imageUrl })
+        .eq("id", user.id)
+    } catch (error) {
+      console.error("Error saving background to database:", error)
+    }
+  }
+
   // 发送AI导师消息
   const sendChatMessage = async () => {
     if (!chatInput.trim() || isChatting) return
@@ -652,11 +808,13 @@ export default function GamifiedDashboard() {
   if (!user) {
     return (
       <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4">
-        {/* 登录页面背景图片 - 疯狂动物城 */}
+        {/* 登录页面背景图片 - 哆啦A梦 */}
         <div 
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
           style={{
-            backgroundImage: 'url(https://wallpaperaccess.com/full/1102715.jpg)',
+            backgroundImage: backgroundImageUrl 
+              ? `url(${backgroundImageUrl})` 
+              : 'url(https://wallpaperaccess.com/full/9503999.jpg)',
             backgroundAttachment: 'fixed',
             backgroundSize: 'cover',
           }}
@@ -682,14 +840,16 @@ export default function GamifiedDashboard() {
 
   return (
     <div className="relative min-h-screen overflow-hidden p-4 md:p-8">
-      {/* 疯狂动物城背景图片 */}
+      {/* 哆啦A梦背景图片 */}
       <div 
         className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-        style={{
-          backgroundImage: 'url(https://wallpaperaccess.com/full/1102715.jpg)',
-          backgroundAttachment: 'fixed',
-          backgroundSize: 'cover',
-        }}
+          style={{
+            backgroundImage: backgroundImageUrl 
+              ? `url(${backgroundImageUrl})` 
+              : 'url(https://wallpaperaccess.com/full/9503999.jpg)',
+            backgroundAttachment: 'fixed',
+            backgroundSize: 'cover',
+          }}
       >
         {/* 背景遮罩层，确保内容可读性 */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 via-cyan-900/40 to-green-900/50 dark:from-gray-900/75 dark:via-gray-800/75 dark:to-gray-900/75"></div>
@@ -799,13 +959,31 @@ export default function GamifiedDashboard() {
                           setTheme("system")
                           setShowThemeMenu(false)
                         }}
-                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg"
+                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <Palette className="h-4 w-4" />
                         <span>跟随系统</span>
                       </button>
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                      <button
+                        onClick={() => {
+                          backgroundInputRef.current?.click()
+                          setShowThemeMenu(false)
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>更换背景</span>
+                      </button>
                     </div>
                   )}
+                  <input
+                    ref={backgroundInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBackgroundUpload}
+                    className="hidden"
+                  />
                 </div>
                 <Button
                   variant="outline"
