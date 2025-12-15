@@ -677,27 +677,49 @@ export default function GamifiedDashboard() {
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<{ itemId: number; itemName: string; cost: number } | null>(null)
 
   const shopItems = [
-    { id: 1, name: "30分钟iPad时间", icon: Gamepad2, cost: 200, color: "text-blue-500" },
-    { id: 2, name: "美味冰淇淋", icon: IceCream, cost: 150, color: "text-cyan-500" },
-    { id: 3, name: "新头像皮肤", icon: Crown, cost: 300, color: "text-yellow-500" },
+    { id: 1, name: "看电视一小时", icon: Gamepad2, cost: 200, color: "text-blue-500" },
+    { id: 2, name: "零食一份", icon: IceCream, cost: 150, color: "text-cyan-500" },
+    { id: 3, name: "新玩具一个", icon: Gift, cost: 300, color: "text-yellow-500" },
     { id: 4, name: "新图书一本", icon: BookOpen, cost: 250, color: "text-blue-500" },
-    { id: 5, name: "户外游玩一次", icon: Gift, cost: 400, color: "text-green-500" },
+    { id: 5, name: "户外游戏一次", icon: Sparkles, cost: 400, color: "text-green-500" },
   ]
 
-  const toggleTask = (id: number) => {
+  const toggleTask = async (id: number) => {
     const task = tasks.find((t) => t.id === id)
     if (!task) return
 
     const newCompleted = !task.completed
+    let newGoldCoins = goldCoins
 
     if (newCompleted && !task.completed) {
-      // 完成任务时只增加金币
-      setGoldCoins((prev) => prev + task.coins)
+      // 完成任务时增加金币
+      newGoldCoins = goldCoins + task.coins
     } else if (!newCompleted && task.completed) {
-      // 取消完成时只减少金币
-      setGoldCoins((prev) => prev - task.coins)
+      // 取消完成时减少金币（但不能小于0）
+      newGoldCoins = Math.max(0, goldCoins - task.coins)
     }
 
+    // 如果金币有变化，更新状态并同步到数据库
+    if (newGoldCoins !== goldCoins) {
+      setGoldCoins(newGoldCoins)
+      
+      // 立即同步金币到数据库
+      if (user) {
+        try {
+          await supabase
+            .from("users")
+            .update({ gold_coins: newGoldCoins })
+            .eq("id", user.id)
+        } catch (error) {
+          console.error("Error updating gold coins:", error)
+          // 如果更新失败，回滚金币
+          setGoldCoins(goldCoins)
+          return // 如果数据库更新失败，不更新任务状态
+        }
+      }
+    }
+
+    // 更新任务状态
     setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
   }
 

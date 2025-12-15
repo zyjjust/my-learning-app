@@ -105,3 +105,4 @@ ADD COLUMN IF NOT EXISTS background_image_url TEXT;
 - [ ] 提供预设背景图选择
 - [ ] 添加背景图预览功能
 - [ ] 支持背景图模糊度调整
+
