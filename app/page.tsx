@@ -861,292 +861,230 @@ export default function GamifiedDashboard() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden p-4 md:p-8">
-      {/* 哆啦A梦背景图片 */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-          style={{
-            backgroundImage: backgroundImageUrl 
-              ? `url(${backgroundImageUrl})` 
-              : 'url(https://wallpaperaccess.com/full/9503999.jpg)',
-            backgroundAttachment: 'fixed',
-            backgroundSize: 'cover',
-          }}
-      >
-        {/* 背景遮罩层，确保内容可读性 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 via-cyan-900/40 to-green-900/50 dark:from-gray-900/75 dark:via-gray-800/75 dark:to-gray-900/75"></div>
-      </div>
-      
-      {/* 儿童风格装饰背景 */}
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        {/* 大号彩色圆圈 */}
-        <div className="absolute left-[5%] top-[10%] h-40 w-40 animate-bounce rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 blur-3xl animation-delay-1000"></div>
-        <div className="absolute right-[10%] top-[20%] h-48 w-48 animate-bounce rounded-full bg-gradient-to-br from-orange-400 to-yellow-400 blur-3xl animation-delay-2000"></div>
-        <div className="absolute bottom-[15%] left-[15%] h-44 w-44 animate-bounce rounded-full bg-gradient-to-br from-green-400 to-emerald-400 blur-3xl animation-delay-3000"></div>
-        <div className="absolute bottom-[25%] right-[8%] h-36 w-36 animate-bounce rounded-full bg-gradient-to-br from-blue-500 to-indigo-400 blur-3xl animation-delay-4000"></div>
-        <div className="absolute top-[40%] left-[50%] h-32 w-32 animate-bounce rounded-full bg-gradient-to-br from-cyan-400 to-blue-400 blur-3xl animation-delay-5000"></div>
-      </div>
-
-      {/* 可爱的浮动图标 */}
-      <div className="pointer-events-none absolute inset-0">
-        <Star className="absolute left-[8%] top-[12%] h-12 w-12 animate-bounce text-yellow-400 opacity-80 drop-shadow-lg animation-delay-1000" />
-        <Star className="absolute right-[12%] top-[25%] h-10 w-10 animate-bounce text-orange-400 opacity-70 drop-shadow-lg animation-delay-2000" />
-        <Sparkles className="absolute bottom-[20%] left-[18%] h-14 w-14 animate-bounce text-blue-400 opacity-70 drop-shadow-lg animation-delay-3000" />
-        <Trophy className="absolute bottom-[18%] right-[18%] h-12 w-12 animate-bounce text-cyan-400 opacity-80 drop-shadow-lg animation-delay-4000" />
-        <Zap className="absolute left-[30%] top-[35%] h-10 w-10 animate-bounce text-cyan-400 opacity-70 drop-shadow-lg animation-delay-5000" />
-        <Crown className="absolute right-[25%] bottom-[30%] h-11 w-11 animate-bounce text-yellow-500 opacity-75 drop-shadow-lg animation-delay-6000" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-7xl">
-        {/* Card with colorful child-friendly design */}
-        <Card className="mb-6 border-4 border-blue-400 bg-gradient-to-br from-white via-blue-50 to-cyan-50 dark:from-blue-900 dark:via-cyan-900 dark:to-indigo-900 shadow-2xl rounded-3xl">
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              {/* Avatar */}
-              <div className="flex items-center gap-4">
-                {/* Avatar with upload functionality */}
-                <div className="relative group">
-                  <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 p-1 shadow-lg overflow-hidden">
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-white">
-                        <User className="h-8 w-8 text-orange-500" />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="上传头像"
-                  >
-                    <Upload className="h-5 w-5 text-white" />
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                  <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white shadow-lg z-10">
-                    {level}
-                  </div>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6" style={{ fontFamily: 'Roboto, sans-serif' }}>
+      <div className="mx-auto max-w-7xl">
+        {/* Google Material Design Header */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          {/* 总积分卡片 - Material Design */}
+          <Card className="material-card bg-white border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-yellow-100 p-2.5">
+                  <Trophy className="h-5 w-5 text-yellow-600" />
                 </div>
                 <div>
-                  {/* Title with dark text for better readability */}
-                  <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-500 via-cyan-500 to-green-500 bg-clip-text text-transparent drop-shadow-lg">
-                    🚀 超级学习小英雄 🚀
-                  </h1>
-                  <p className="text-base font-bold text-orange-600 dark:text-orange-300">⭐ 第 {level} 级学习英雄 ⭐</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">总积分</p>
+                  <p className="text-2xl font-semibold text-gray-900">{currentLevelXP}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Theme Switcher and Logout */}
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowThemeMenu(!showThemeMenu)}
-                    className="flex items-center gap-2"
+          {/* 标题和标语 - Material Design */}
+          <div className="flex-1 text-center min-w-0">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="rounded-full bg-blue-100 p-1.5">
+                <Zap className="h-4 w-4 text-blue-600" />
+              </div>
+              <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
+            </div>
+            <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
+          </div>
+
+          {/* 连续登录卡片 - Material Design */}
+          <Card className="material-card bg-white border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-orange-100 p-2.5">
+                  <Flame className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">连续登录</p>
+                  <p className="text-2xl font-semibold text-gray-900">{streak}天</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 用户菜单 */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowThemeMenu(!showThemeMenu)}
+                className="h-9 w-9 p-0"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+              {showThemeMenu && (
+                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      setTheme("light")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-t-lg"
+                  >
+                    <Sun className="h-4 w-4" />
+                    <span>浅色</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTheme("dark")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                  >
+                    <Moon className="h-4 w-4" />
+                    <span>深色</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTheme("system")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
                   >
                     <Palette className="h-4 w-4" />
-                    <span>主题</span>
-                  </Button>
-                  {showThemeMenu && (
-                    <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white dark:bg-gray-800 shadow-lg z-50">
-                      <button
-                        onClick={() => {
-                          setTheme("light")
-                          setShowThemeMenu(false)
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg"
-                      >
-                        <Sun className="h-4 w-4" />
-                        <span>浅色</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTheme("dark")
-                          setShowThemeMenu(false)
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Moon className="h-4 w-4" />
-                        <span>深色</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTheme("system")
-                          setShowThemeMenu(false)
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Palette className="h-4 w-4" />
-                        <span>跟随系统</span>
-                      </button>
-                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
-                      <button
-                        onClick={() => {
-                          backgroundInputRef.current?.click()
-                          setShowThemeMenu(false)
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg"
-                      >
-                        <Upload className="h-4 w-4" />
-                        <span>更换背景</span>
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    ref={backgroundInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleBackgroundUpload}
-                    className="hidden"
-                  />
+                    <span>跟随系统</span>
+                  </button>
+                  <div className="border-t border-gray-200"></div>
+                  <button
+                    onClick={() => {
+                      backgroundInputRef.current?.click()
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-b-lg"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>更换背景</span>
+                  </button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={signOut}
-                  className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  <X className="h-4 w-4" />
-                  <span>登出</span>
-                </Button>
-              </div>
-
-              {/* 金币显示区域 - 儿童风格 */}
-              <div className="flex-1 md:mx-8">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-lg font-extrabold text-yellow-600 dark:text-yellow-400">💰 我的金币 💰</span>
-                  <span className="text-2xl font-extrabold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
-                    {goldCoins.toLocaleString()}
-                  </span>
-                </div>
-                <div className="relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 shadow-lg border-2 border-yellow-300">
-                  <div className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-400 animate-gradient-x bg-[length:200%_100%]">
-                    <div className="h-full w-full animate-pulse bg-white/30"></div>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-white drop-shadow-lg">
-                    <Coins className="h-5 w-5 mr-2 animate-bounce" />
-                    ✨ 金币多多 ✨
-                  </div>
-                </div>
-              </div>
-
-              {/* 连续登录天数 - 儿童风格 */}
-              <div className="flex gap-3">
-                <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-200 to-cyan-200 dark:from-blue-800 dark:to-cyan-800 px-5 py-3 shadow-xl border-2 border-blue-300">
-                  <Flame className="h-7 w-7 text-orange-600 dark:text-orange-300 animate-pulse" />
-                  <div>
-                    <div className="text-xs font-bold text-orange-700 dark:text-orange-200">🔥 连续登录</div>
-                    <div className="text-2xl font-extrabold text-orange-600 dark:text-orange-300">{streak} 天</div>
-                  </div>
-                </div>
-              </div>
+              )}
+              <input
+                ref={backgroundInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBackgroundUpload}
+                className="hidden"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <div className="relative group">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
         {/* Main Layout */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+          {/* 左侧：每日任务 */}
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <Trophy className="h-10 w-10 text-yellow-500 animate-bounce" />
-              <h2 className="text-4xl font-extrabold bg-gradient-to-r from-blue-500 via-cyan-500 to-green-500 bg-clip-text text-transparent drop-shadow-lg">
-                🎯 今日任务 🎯
-              </h2>
-              <span className="rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-4 py-2 text-base font-extrabold text-white shadow-lg animate-pulse">
-                {completedTasks}/{totalTasks}
-              </span>
-              <Button
-                onClick={refreshTasks}
-                variant="outline"
-                size="sm"
-                className="ml-auto flex items-center gap-2"
-                title="刷新任务"
-                disabled={isGeneratingTasks}
-              >
-                {isGeneratingTasks ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                <span>{isGeneratingTasks ? "生成中..." : "刷新任务"}</span>
-              </Button>
+            {/* 任务标题栏 - Material Design */}
+            <div className="mb-4 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 p-4 material-card-elevated shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-white/20 p-1.5">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <h2 className="text-xl font-medium text-white">每日任务</h2>
+                </div>
+                <span className="rounded-full bg-white/20 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
+                  完成 {completedTasks}/{totalTasks}
+                </span>
+              </div>
             </div>
 
+            {/* 任务列表 - Google风格卡片 */}
             <div className="space-y-3">
               {tasks.map((task) => {
                 const DifficultyIcon = getDifficultyIcon(task.difficulty)
+                const taskType = task.id <= 2 ? "固定任务" : "AI 任务"
+                
+                // 根据任务类型选择图标
+                let TaskIcon = BookOpen
+                if (task.id === 1) {
+                  TaskIcon = BookOpen // 每日课后作业
+                } else if (task.id === 2) {
+                  TaskIcon = Zap // 运动健康打卡
+                } else {
+                  TaskIcon = BookOpen // AI任务
+                }
 
                 return (
                   <Card
                     key={task.id}
-                    className={`border-4 transition-all duration-300 hover:scale-[1.03] rounded-3xl ${
-                      task.completed
-                        ? "border-green-500 bg-gradient-to-br from-green-100 to-emerald-100 shadow-2xl shadow-green-300"
-                        : "border-blue-400 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-2xl hover:border-blue-500 hover:shadow-blue-300"
+                    className={`material-card bg-white border-0 shadow-sm hover:shadow-md transition-shadow ${
+                      task.completed ? "opacity-60" : ""
                     }`}
                   >
-                    <CardContent className="p-5">
+                    <CardContent className="p-4">
                       <div className="flex items-start gap-4">
-                        {/* Icon with bright background - 儿童风格 */}
-                        <div className={`mt-1 rounded-2xl p-3 shadow-lg ${task.completed ? "bg-gradient-to-br from-green-300 to-emerald-300" : "bg-gradient-to-br from-blue-300 to-cyan-300"}`}>
-                          <BookOpen className={`h-8 w-8 ${task.completed ? "text-green-700" : "text-blue-600"}`} />
+                        {/* 任务图标 - Material Design */}
+                        <div className={`mt-0.5 rounded-lg p-2.5 ${task.completed ? "bg-green-50" : "bg-blue-50"}`}>
+                          <TaskIcon className={`h-5 w-5 ${task.completed ? "text-green-700" : "text-blue-700"}`} />
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1">
+                        {/* 任务内容 */}
+                        <div className="flex-1 min-w-0">
                           <h3
-                            className={`mb-2 text-xl font-extrabold leading-relaxed ${
-                              task.completed ? "text-green-700 line-through" : "text-gray-800 dark:text-gray-100"
+                            className={`mb-2 text-sm font-medium leading-snug ${
+                              task.completed ? "text-gray-400 line-through" : "text-gray-800"
                             }`}
                           >
                             {task.text}
                           </h3>
 
-                          <div className="flex flex-wrap items-center gap-3">
-                            {/* Difficulty Badge */}
-                            <span
-                              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${getDifficultyColor(task.difficulty)}`}
-                            >
-                              <DifficultyIcon className="h-3 w-3" />
-                              {task.difficulty}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              {taskType}
                             </span>
-
-                            {/* Rewards with darker text */}
-                            <div className="flex items-center gap-1 text-sm font-bold text-yellow-600">
-                              <Coins className="h-4 w-4" />+{task.coins} 金币
-                            </div>
+                            <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+                              +{task.coins} 积分
+                            </span>
                           </div>
                         </div>
 
-                        {/* Complete Button - 儿童风格 */}
-                        <Button
+                        {/* 完成按钮 - Material Design Radio Button */}
+                        <button
                           onClick={() => toggleTask(task.id)}
-                          size="lg"
-                          className={`h-auto px-8 py-4 text-lg font-extrabold shadow-2xl transition-all rounded-2xl ${
+                          className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 ${
                             task.completed
-                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-2 border-green-600"
-                              : "bg-gradient-to-r from-blue-500 via-cyan-500 to-green-500 hover:from-blue-600 hover:via-cyan-600 hover:to-green-600 text-white border-2 border-blue-600"
+                              ? "border-green-500 bg-green-500"
+                              : "border-gray-300 hover:border-gray-400 bg-white"
                           }`}
+                          aria-label={task.completed ? "取消完成" : "完成任务"}
                         >
-                          {task.completed ? (
-                            <>
-                              <Zap className="mr-2 h-6 w-6" />
-                              ✅ 已完成
-                            </>
-                          ) : (
-                            <>
-                              <Star className="mr-2 h-5 w-5" />
-                              🎯 完成任务
-                            </>
+                          {task.completed && (
+                            <div className="h-2 w-2 rounded-full bg-white"></div>
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -1154,153 +1092,181 @@ export default function GamifiedDashboard() {
               })}
             </div>
 
-            {/* Progress Summary with white background */}
-            <Card className="mt-6 border-2 border-orange-400 bg-white dark:bg-gray-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-orange-600">今日完成进度</p>
-                    <p className="text-4xl font-bold text-gray-800">{progressPercent}%</p>
-                  </div>
-                  <div className="relative">
-                    <svg className="h-24 w-24 -rotate-90 transform">
-                      <circle
-                        cx="50%"
-                        cy="50%"
-                        r="40%"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        className="text-gray-200"
-                      />
-                      <circle
-                        cx="50%"
-                        cy="50%"
-                        r="40%"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 40}`}
-                        strokeDashoffset={`${2 * Math.PI * 40 * (1 - progressPercent / 100)}`}
-                        strokeLinecap="round"
-                        className="text-orange-500 transition-all duration-500"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* 刷新AI任务按钮 - Material Design */}
+            <Button
+              onClick={refreshTasks}
+              variant="outline"
+              className="mt-4 w-full border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400 font-medium rounded-lg shadow-sm"
+              disabled={isGeneratingTasks}
+            >
+              {isGeneratingTasks ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  刷新 AI 任务
+                </>
+              )}
+            </Button>
+
           </div>
 
-          <div className="space-y-4 lg:w-72">
-            {/* Rewards Shop with white background */}
-            <Card className="border-2 border-orange-400 bg-white dark:bg-gray-800 shadow-2xl">
-              <CardContent className="p-6">
-                <div className="mb-4 flex items-center justify-between">
+          {/* 右侧：兑换商店和AI助手 */}
+          <div className="space-y-4">
+            {/* 兑换商店 - Material Design */}
+            <Card className="material-card bg-white border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
                   <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-6 w-6 text-orange-500" />
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">奖励商店</h3>
+                    <div className="rounded-lg bg-orange-100 p-1.5">
+                      <ShoppingBag className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">兑换商店</h3>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPurchasedItems(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Package className="h-4 w-4" />
-                    <span>我的商品</span>
-                  </Button>
+                  <div className="flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1.5 border border-yellow-200">
+                    <Coins className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm font-medium text-gray-700">余额: {goldCoins}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  {shopItems.slice(0, 3).map((item) => {
+                <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto">
+                  {shopItems.map((item) => {
                     const ItemIcon = item.icon
                     const isPurchased = purchasedItems.includes(item.id)
                     const canAfford = goldCoins >= item.cost
+                    const purchasedCount = allPurchasedItems.find(p => p.item_id === item.id)?.count || 0
 
                     return (
-                      <div
+                      <Card
                         key={item.id}
-                        // Shop Item with bright background
-                        className={`rounded-lg border p-3 ${
-                          isPurchased
-                            ? "border-green-400 bg-green-50"
-                            : canAfford
-                              ? "border-orange-300 bg-orange-50"
-                              : "border-gray-300 bg-gray-100"
+                        className={`material-card bg-white border-0 shadow-sm hover:shadow-md transition-shadow ${
+                          isPurchased ? "opacity-60" : ""
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <ItemIcon className={`h-5 w-5 ${item.color}`} />
-                          <div className="flex-1">
-                            <p
-                              className={`text-sm font-semibold ${isPurchased ? "text-gray-500 line-through" : "text-gray-800"}`}
+                        <CardContent className="p-4">
+                          <div className="flex flex-col">
+                            <div className="flex items-start gap-3 mb-2">
+                              <div className="mt-0.5 rounded-lg p-2 bg-gray-100">
+                                <ItemIcon className="h-5 w-5 text-gray-700" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                                  {item.name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
+                              <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+                                ☆{item.cost} 积分
+                              </span>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                if (isPurchased) {
+                                  alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
+                                } else if (!canAfford) {
+                                  alert("金币不足！")
+                                } else {
+                                  setShowPurchaseConfirm({ itemId: item.id, itemName: item.name, cost: item.cost })
+                                }
+                              }}
+                              disabled={isPurchased || !canAfford}
+                              className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                             >
-                              {item.name}
-                            </p>
-                            <p className="flex items-center gap-1 text-xs text-yellow-600">
-                              <Coins className="h-3 w-3" />
-                              {item.cost}
-                            </p>
+                              {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "积分不足"}
+                            </Button>
                           </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     )
                   })}
                 </div>
-
-                <Button
-                  onClick={() => setShowShop(true)}
-                  className="mt-4 w-full bg-gradient-to-r from-blue-500 to-cyan-500 font-bold text-white hover:from-blue-600 hover:to-cyan-600"
-                >
-                  查看全部
-                </Button>
               </CardContent>
             </Card>
 
-            <Button
-              onClick={() => setShowAITutor(true)}
-              size="lg"
-              className="group relative w-full overflow-hidden bg-gradient-to-r from-blue-500 via-cyan-500 to-green-500 py-10 text-white shadow-2xl transition-all hover:scale-105 hover:from-blue-600 hover:via-cyan-600 hover:to-green-600 rounded-3xl border-4 border-blue-300"
-            >
-              <div className="flex flex-col items-center gap-3">
-                <MessageCircle className="h-12 w-12 transition-transform group-hover:scale-125 animate-bounce" />
-                <span className="text-2xl font-extrabold">🤖 召唤AI导师 🤖</span>
-                <span className="text-sm font-bold text-blue-100">作业辅导小助手</span>
-              </div>
-              <div className="absolute inset-0 -z-10 animate-pulse bg-gradient-to-r from-blue-400/30 via-cyan-400/30 to-green-400/30"></div>
-            </Button>
+            {/* AI学习助手 - Material Design */}
+            <Card className="material-card bg-white border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-blue-100 p-1.5">
+                      <MessageCircle className="h-4 w-4 text-blue-700" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">AI 学习助手</h3>
+                  </div>
+                  <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 border border-green-200">在线</span>
+                </div>
+
+                {/* 聊天消息 - Material Design */}
+                <div className="mb-4 rounded-lg bg-blue-50 p-4 border-l-4 border-blue-500 shadow-sm">
+                  <p className="text-sm text-gray-800">
+                    <span className="font-medium text-gray-900">AI 老师</span>: 你好!我是你的AI学习助手。准备好开始今天的学习了吗?
+                  </p>
+                </div>
+
+                {/* 输入框 - Material Design */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="输入你的问题..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !isChatting && chatInput.trim()) {
+                        sendChatMessage()
+                      }
+                    }}
+                    className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                  />
+                  <Button
+                    onClick={sendChatMessage}
+                    disabled={isChatting || !chatInput.trim()}
+                    className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
 
-      {/* Shop Modal with white background */}
+      {/* Shop Modal - Material Design */}
       {showShop && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-auto border-2 border-orange-400 bg-white shadow-2xl">
-            <CardContent className="p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-white material-card-elevated rounded-lg">
+            <CardContent className="p-6">
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <ShoppingBag className="h-8 w-8 text-orange-500" />
-                  <h2 className="text-3xl font-bold text-gray-800">奖励商店</h2>
+                  <ShoppingBag className="h-6 w-6 text-gray-600" />
+                  <h2 className="text-xl font-semibold text-gray-800">兑换商店</h2>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowShop(false)}
-                  className="h-10 w-10 text-gray-800 hover:bg-gray-100"
+                  className="h-8 w-8 text-gray-600 hover:bg-gray-100"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
 
-              {/* Gold Coins Display - 儿童风格 */}
-              <div className="mb-6 rounded-3xl bg-gradient-to-br from-yellow-200 via-orange-200 to-yellow-200 p-6 text-center border-4 border-yellow-300 shadow-xl">
-                <p className="text-lg font-extrabold text-yellow-700 mb-2">💰 我的金币 💰</p>
-                <p className="flex items-center justify-center gap-3 text-5xl font-extrabold text-yellow-600">
-                  <Coins className="h-10 w-10 animate-bounce" />
-                  {goldCoins.toLocaleString()}
-                </p>
+              {/* Gold Coins Display - Material Design */}
+              <div className="mb-6 rounded-lg bg-yellow-50 border border-yellow-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-yellow-100 p-1.5">
+                      <Coins className="h-5 w-5 text-yellow-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">当前余额</span>
+                  </div>
+                  <span className="text-2xl font-medium text-gray-900">{goldCoins.toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -1308,107 +1274,98 @@ export default function GamifiedDashboard() {
                   const isPurchased = purchasedItems.includes(item.id)
                   const canAfford = goldCoins >= item.cost
                   const ItemIcon = item.icon
+                  const purchasedCount = allPurchasedItems.find(p => p.item_id === item.id)?.count || 0
 
                   return (
-                    <div
+                    <Card
                       key={item.id}
-                      // Shop Item List with bright background
-                      className={`flex items-center justify-between rounded-xl border-2 p-4 transition-all ${
-                        isPurchased
-                          ? "border-green-400 bg-green-50"
-                          : canAfford
-                            ? "border-orange-300 bg-orange-50 hover:border-orange-400"
-                            : "border-gray-300 bg-gray-100"
+                      className={`material-card bg-white border border-gray-200 ${
+                        isPurchased ? "opacity-60" : ""
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <ItemIcon className={`h-10 w-10 ${item.color}`} />
-                        <div>
-                          <p
-                            className={`text-lg font-semibold ${isPurchased ? "line-through text-gray-500" : "text-gray-800"}`}
-                          >
-                            {item.name}
-                          </p>
-                          <p className="flex items-center gap-1 text-sm font-medium text-yellow-600">
-                            <Coins className="h-4 w-4" />
-                            {item.cost} 金币
-                          </p>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 rounded-full p-2 bg-gray-100">
+                            <ItemIcon className="h-5 w-5 text-gray-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-2">
+                              {item.id === 1 && "看你最喜欢的动画片。"}
+                              {item.id === 2 && "享受美味的零食时光。"}
+                              {item.id === 3 && "获得一个新玩具奖励。"}
+                              {item.id === 4 && "从书店买一本新图书。"}
+                              {item.id === 5 && "在外面玩飞盘或捉迷藏。"}
+                            </p>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
+                              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">☆{item.cost} 积分</span>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                if (isPurchased) {
+                                  alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
+                                } else if (!canAfford) {
+                                  alert("积分不足！")
+                                } else {
+                                  setShowPurchaseConfirm({ itemId: item.id, itemName: item.name, cost: item.cost })
+                                }
+                              }}
+                              disabled={isPurchased || !canAfford}
+                              className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "积分不足"}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <Button
-                        disabled={!canAfford || isPurchased}
-                        onClick={() => setShowPurchaseConfirm({ itemId: item.id, itemName: item.name, cost: item.cost })}
-                        className="bg-gradient-to-r from-blue-500 to-cyan-500 font-extrabold text-white hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 rounded-xl text-base px-6 py-3 shadow-lg"
-                      >
-                        {isPurchased ? "✅ 今日已兑换" : canAfford ? "🛒 立即兑换" : "💰 金币不足"}
-                      </Button>
-                    </div>
+                      </CardContent>
+                    </Card>
                   )
                 })}
               </div>
 
-              <p className="mt-6 text-center text-sm text-orange-600">完成更多任务来赚取金币解锁奖励！</p>
+              <p className="mt-6 text-center text-xs text-gray-500">完成更多任务来赚取积分解锁奖励！</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* AI Tutor Modal with white background */}
+      {/* AI Tutor Modal - Google Style */}
       {showAITutor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <Card className="relative w-full max-w-2xl max-h-[90vh] flex flex-col border-2 border-cyan-400 bg-white dark:bg-gray-800 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white shadow-lg">
             <CardContent className="p-6 flex flex-col flex-1 overflow-hidden">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <MessageCircle className="h-8 w-8 text-cyan-500" />
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">AI学习助手</h2>
+                  <MessageCircle className="h-6 w-6 text-gray-600" />
+                  <h2 className="text-xl font-semibold text-gray-800">AI 学习助手</h2>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowAITutor(false)
-                    setChatMessages([])
-                    setChatInput("")
-                  }}
-                  className="h-10 w-10 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="h-6 w-6" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-green-600 font-medium">在线</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setShowAITutor(false)
+                      setChatMessages([])
+                      setChatInput("")
+                    }}
+                    className="h-8 w-8 text-gray-600 hover:bg-gray-100"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
 
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto mb-4 space-y-4 min-h-[300px] max-h-[400px]">
                 {chatMessages.length === 0 ? (
-                  <div className="rounded-xl bg-cyan-50 dark:bg-cyan-900/20 p-6 text-center">
-                    <Sparkles className="mx-auto mb-4 h-16 w-16 text-cyan-500" />
-                    <p className="mb-2 text-xl font-bold text-gray-800 dark:text-gray-100">你好，小英雄！</p>
-                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                      我是你的AI学习助手，随时准备帮助你解答作业问题、讲解难题，陪伴你的学习之旅！
+                  <div className="rounded-lg bg-purple-50 p-4">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">AI 老师</span>: 你好!我是你的AI学习助手。准备好开始今天的学习了吗?
                     </p>
-                    <div className="mt-6 space-y-3">
-                      <Button
-                        onClick={() => setChatInput("我想问数学问题")}
-                        className="w-full justify-start bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
-                      >
-                        <BookOpen className="mr-2 h-5 w-5" />
-                        数学作业辅导
-                      </Button>
-                      <Button
-                        onClick={() => setChatInput("我想问语文问题")}
-                        className="w-full justify-start bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600"
-                      >
-                        <Star className="mr-2 h-5 w-5" />
-                        语文阅读理解
-                      </Button>
-                      <Button
-                        onClick={() => setChatInput("我想问科学问题")}
-                        className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
-                      >
-                        <Zap className="mr-2 h-5 w-5" />
-                        科学实验指导
-                      </Button>
-                    </div>
                   </div>
                 ) : (
                   chatMessages.map((msg, index) => (
@@ -1417,10 +1374,10 @@ export default function GamifiedDashboard() {
                       className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
+                        className={`max-w-[80%] rounded-lg p-3 ${
                           msg.role === "user"
-                            ? "bg-cyan-500 text-white"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                            ? "bg-purple-500 text-white"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -1430,7 +1387,7 @@ export default function GamifiedDashboard() {
                 )}
                 {isChatting && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                    <div className="bg-gray-100 rounded-lg p-3">
                       <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
                     </div>
                   </div>
@@ -1438,25 +1395,25 @@ export default function GamifiedDashboard() {
               </div>
 
               {/* Chat Input */}
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && sendChatMessage()}
                   placeholder="输入你的问题..."
-                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   disabled={isChatting}
                 />
                 <Button
                   onClick={sendChatMessage}
                   disabled={!chatInput.trim() || isChatting}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                  className="rounded-lg bg-purple-500 px-4 py-2 text-white hover:bg-purple-600 disabled:opacity-50"
                 >
                   {isChatting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4" />
                   )}
                 </Button>
               </div>
@@ -1465,36 +1422,38 @@ export default function GamifiedDashboard() {
         </div>
       )}
 
-      {/* Purchase Confirmation Modal */}
+      {/* Purchase Confirmation Modal - Google Style */}
       {showPurchaseConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <Card className="relative w-full max-w-md border-2 border-orange-400 bg-white dark:bg-gray-800 shadow-2xl">
-            <CardContent className="p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="relative w-full max-w-md bg-white shadow-lg">
+            <CardContent className="p-6">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">确认购买</h2>
+                <h2 className="text-xl font-semibold text-gray-800">确认兑换</h2>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPurchaseConfirm(null)}
-                  className="h-10 w-10 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="h-8 w-8 text-gray-600 hover:bg-gray-100"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
 
-              <div className="mb-6 rounded-3xl bg-gradient-to-br from-blue-100 via-cyan-100 to-green-100 dark:from-blue-900/30 dark:via-cyan-900/30 dark:to-green-900/30 p-8 text-center border-4 border-blue-300 shadow-xl">
-                <Gift className="mx-auto mb-4 h-20 w-20 text-blue-500 animate-bounce" />
-                <p className="mb-3 text-2xl font-extrabold text-gray-800 dark:text-gray-100">
-                  🎁 {showPurchaseConfirm.itemName} 🎁
+              <div className="mb-6 rounded-lg bg-gray-50 p-6 text-center">
+                <Gift className="mx-auto mb-4 h-12 w-12 text-purple-500" />
+                <p className="mb-3 text-lg font-semibold text-gray-800">
+                  {showPurchaseConfirm.itemName}
                 </p>
-                <p className="text-lg text-gray-700 dark:text-gray-300 mb-2">
-                  需要花费 <span className="font-extrabold text-2xl text-orange-600 dark:text-orange-400">{showPurchaseConfirm.cost}</span> 金币
-                </p>
-                <p className="text-base text-gray-600 dark:text-gray-400">
-                  当前金币: <span className="font-extrabold text-xl text-yellow-600 dark:text-yellow-400">{goldCoins}</span>
-                </p>
-                <p className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-bold">
-                  💡 每个商品每天只能兑换一次，明天可以再次兑换哦！
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    需要花费 <span className="font-semibold text-lg text-purple-600">{showPurchaseConfirm.cost}</span> 积分
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    当前余额: <span className="font-semibold text-base text-gray-800">{goldCoins}</span>
+                  </p>
+                </div>
+                <p className="mt-4 text-xs text-gray-500">
+                  每个商品每天只能兑换一次，明天可以再次兑换
                 </p>
               </div>
 
@@ -1502,15 +1461,15 @@ export default function GamifiedDashboard() {
                 <Button
                   variant="outline"
                   onClick={() => setShowPurchaseConfirm(null)}
-                  className="flex-1 rounded-xl border-2 border-gray-300 font-extrabold text-base py-3"
+                  className="flex-1 rounded-lg border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  ❌ 取消
+                  取消
                 </Button>
                 <Button
                   onClick={() => purchaseItem(showPurchaseConfirm.itemId, showPurchaseConfirm.cost, showPurchaseConfirm.itemName)}
-                  className="flex-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-green-500 font-extrabold text-white hover:from-blue-600 hover:via-cyan-600 hover:to-green-600 rounded-xl text-base py-3 shadow-lg"
+                  className="flex-1 rounded-lg bg-purple-500 text-white hover:bg-purple-600"
                 >
-                  ✅ 确认兑换
+                  确认兑换
                 </Button>
               </div>
             </CardContent>
@@ -1518,32 +1477,32 @@ export default function GamifiedDashboard() {
         </div>
       )}
 
-      {/* Purchased Items Modal */}
+      {/* Purchased Items Modal - Google Style */}
       {showPurchasedItems && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-auto border-2 border-green-400 bg-white dark:bg-gray-800 shadow-2xl">
-            <CardContent className="p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-white shadow-lg">
+            <CardContent className="p-6">
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Package className="h-8 w-8 text-green-500" />
-                  <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">我的商品</h2>
+                  <Package className="h-6 w-6 text-gray-600" />
+                  <h2 className="text-xl font-semibold text-gray-800">我的商品</h2>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPurchasedItems(false)}
-                  className="h-10 w-10 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="h-8 w-8 text-gray-600 hover:bg-gray-100"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
 
               {allPurchasedItems.length === 0 ? (
                 <div className="py-12 text-center">
-                  <Package className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                  <p className="text-lg text-gray-600 dark:text-gray-400">还没有购买任何商品</p>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-                    完成更多任务来赚取金币，然后在商店中购买奖励吧！
+                  <Package className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+                  <p className="text-base text-gray-600">还没有购买任何商品</p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    完成更多任务来赚取积分，然后在商店中兑换奖励吧！
                   </p>
                 </div>
               ) : (
@@ -1553,27 +1512,29 @@ export default function GamifiedDashboard() {
                     if (!shopItem) return null
                     const ItemIcon = shopItem.icon
                     return (
-                      <div
+                      <Card
                         key={purchasedItem.item_id}
-                        className="flex items-center justify-between rounded-3xl border-4 border-green-400 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-800 dark:to-emerald-800 p-5 shadow-xl"
+                        className="bg-white border hover:shadow-md transition-shadow"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="rounded-2xl bg-white dark:bg-gray-700 p-3 shadow-lg">
-                            <ItemIcon className={`h-12 w-12 ${shopItem.color}`} />
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-lg p-2 bg-gray-100">
+                              <ItemIcon className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-800 mb-1">
+                                {purchasedItem.item_name}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <span className="text-xs text-gray-500">已兑换</span>
+                                <span className="text-sm font-semibold text-gray-800">{purchasedItem.count}</span>
+                                <span className="text-xs text-gray-500">次</span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xl font-extrabold text-gray-800 dark:text-gray-100 mb-1">
-                              {purchasedItem.item_name}
-                            </p>
-                            <p className="flex items-center gap-2 text-base text-gray-700 dark:text-gray-300">
-                              <CheckCircle2 className="h-5 w-5 text-green-500 animate-pulse" />
-                              <span className="font-bold">已兑换</span>
-                              <span className="font-extrabold text-2xl text-green-600 dark:text-green-400">{purchasedItem.count}</span>
-                              <span className="font-bold">次</span>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     )
                   })}
                 </div>
