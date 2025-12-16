@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase/client"
 import { LoginForm } from "@/components/auth/login-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import confetti from "canvas-confetti"
 import {
   ShoppingBag,
   Star,
@@ -35,6 +36,7 @@ import {
   Loader2,
   Package,
   CheckCircle2,
+  TrendingUp,
 } from "lucide-react"
 
 // 4年级学习任务池（备用，AI生成失败时使用）
@@ -157,8 +159,10 @@ export default function GamifiedDashboard() {
   const { user, loading: authLoading, signOut, refreshUser, setUser } = useAuth()
   const [level, setLevel] = useState(1)
   const [currentLevelXP, setCurrentLevelXP] = useState(0)
+  const [totalXP, setTotalXP] = useState(0) // 累计积分
   const [goldCoins, setGoldCoins] = useState(0)
   const [streak, setStreak] = useState(0)
+  const [title, setTitle] = useState("学习新星") // 称号
   const [purchasedItems, setPurchasedItems] = useState<number[]>([])
   const [showPurchasedItems, setShowPurchasedItems] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -230,6 +234,99 @@ export default function GamifiedDashboard() {
     }
   }
 
+  // 根据累计积分计算等级和称号
+  const calculateLevelAndTitle = (totalXP: number) => {
+    // 等级计算公式：每100积分升一级
+    const calculatedLevel = Math.floor(totalXP / 100) + 1
+    
+    // 当前等级的积分进度（0-100）
+    const currentXP = totalXP % 100
+    
+    // 根据等级计算称号
+    let calculatedTitle = "学习新星"
+    if (calculatedLevel >= 20) {
+      calculatedTitle = "知识王者"
+    } else if (calculatedLevel >= 15) {
+      calculatedTitle = "智慧大师"
+    } else if (calculatedLevel >= 10) {
+      calculatedTitle = "学习达人"
+    } else if (calculatedLevel >= 5) {
+      calculatedTitle = "进步之星"
+    }
+    
+    return { level: calculatedLevel, title: calculatedTitle, currentXP }
+  }
+
+  // 播放音效
+  const playSound = (soundType: 'complete' | 'coin' | 'levelup') => {
+    try {
+      // 使用 Web Audio API 生成音效
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      if (soundType === 'complete') {
+        // 完成任务音效：叮咚声
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1)
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.3)
+      } else if (soundType === 'coin') {
+        // 金币音效
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime)
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.05)
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.2)
+      } else if (soundType === 'levelup') {
+        // 升级音效：上升音调
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime)
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1)
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2)
+        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4)
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.4)
+      }
+    } catch (error) {
+      console.log("Audio not supported or user interaction required")
+    }
+  }
+
+  // 触发五彩纸屑特效
+  const triggerConfetti = () => {
+    const duration = 3000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min
+    }
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval)
+      }
+
+      const particleCount = 50 * (timeLeft / duration)
+      
+      confetti({
+        ...defaults,
+        origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 },
+        colors: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'],
+        particleCount,
+      })
+    }, 250)
+  }
+
   // 从数据库加载用户数据
   const loadUserData = async () => {
     if (!user) return
@@ -247,8 +344,15 @@ export default function GamifiedDashboard() {
       }
 
       if (data) {
-        setLevel(data.level || 1)
-        setCurrentLevelXP(data.current_xp || 0)
+        const totalXPValue = data.total_xp || 0
+        setTotalXP(totalXPValue)
+        
+        // 根据累计积分计算等级和称号
+        const { level: calculatedLevel, title: calculatedTitle, currentXP } = calculateLevelAndTitle(totalXPValue)
+        setLevel(calculatedLevel)
+        setCurrentLevelXP(currentXP)
+        setTitle(calculatedTitle)
+        
         setGoldCoins(data.gold_coins || 0)
         if (data.avatar_url) {
           setAvatarUrl(data.avatar_url)
@@ -380,6 +484,7 @@ export default function GamifiedDashboard() {
         .update({
           level,
           current_xp: currentLevelXP,
+          total_xp: totalXP,
           gold_coins: goldCoins,
           streak,
           avatar_url: avatarUrl,
@@ -407,14 +512,14 @@ export default function GamifiedDashboard() {
 
   // 当数据变化时同步到数据库
   useEffect(() => {
-    if (user && (level || currentLevelXP || goldCoins || streak || avatarUrl)) {
+    if (user && (level || currentLevelXP || totalXP || goldCoins || streak || avatarUrl)) {
       const timer = setTimeout(() => {
         syncUserData()
       }, 1000) // 防抖，1秒后同步
 
       return () => clearTimeout(timer)
     }
-  }, [user, level, currentLevelXP, goldCoins, streak, avatarUrl])
+  }, [user, level, currentLevelXP, totalXP, goldCoins, streak, avatarUrl])
 
   // 从localStorage加载头像（兼容旧数据）
   useEffect(() => {
@@ -639,11 +744,17 @@ export default function GamifiedDashboard() {
     if (!chatInput.trim() || isChatting) return
 
     const userMessage = chatInput.trim()
+    const newUserMessage = { role: "user" as const, content: userMessage }
+    
+    // 先更新UI，显示用户消息
+    setChatMessages((prev) => [...prev, newUserMessage])
     setChatInput("")
-    setChatMessages((prev) => [...prev, { role: "user", content: userMessage }])
     setIsChatting(true)
 
     try {
+      // 使用最新的消息列表（包含刚添加的用户消息）
+      const currentMessages = [...chatMessages, newUserMessage]
+      
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: {
@@ -651,21 +762,42 @@ export default function GamifiedDashboard() {
         },
         body: JSON.stringify({
           type: "chat",
-          messages: [...chatMessages, { role: "user", content: userMessage }],
+          messages: currentMessages,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to get AI response")
+        const errorData = await response.json().catch(() => ({ error: "未知错误" }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
-      setChatMessages((prev) => [...prev, { role: "assistant", content: data.content || "抱歉，我暂时无法回答这个问题。" }])
-    } catch (error) {
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
+      setChatMessages((prev) => [...prev, { 
+        role: "assistant", 
+        content: data.content || "抱歉，我暂时无法回答这个问题。" 
+      }])
+    } catch (error: any) {
       console.error("Error sending chat message:", error)
+      let errorMessage = "抱歉，发生了错误。"
+      
+      if (error.message) {
+        if (error.message.includes("DashScope API key")) {
+          errorMessage = "AI API 未配置。请在环境变量中设置 DASHSCOPE_API_KEY。"
+        } else if (error.message.includes("Failed to call AI API")) {
+          errorMessage = "AI API 调用失败。请检查网络连接和 API 配置。"
+        } else {
+          errorMessage = `错误：${error.message}`
+        }
+      }
+      
       setChatMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "抱歉，发生了错误。请检查AI API配置是否正确。" },
+        { role: "assistant", content: errorMessage },
       ])
     } finally {
       setIsChatting(false)
@@ -690,37 +822,83 @@ export default function GamifiedDashboard() {
 
     const newCompleted = !task.completed
     let newGoldCoins = goldCoins
+    let newTotalXP = totalXP
+    let levelUp = false
+    let calculatedLevel = level
+    let calculatedTitle = title
 
     if (newCompleted && !task.completed) {
-      // 完成任务时增加金币
+      // 完成任务时增加金币和累计积分
       newGoldCoins = goldCoins + task.coins
+      newTotalXP = totalXP + task.coins
+      
+      // 检查是否升级
+      const oldLevel = Math.floor(totalXP / 100) + 1
+      const newLevel = Math.floor(newTotalXP / 100) + 1
+      levelUp = newLevel > oldLevel
+      
+      // 播放音效和特效
+      playSound('complete')
+      playSound('coin')
+      triggerConfetti()
+      
+      // 如果升级，播放升级音效和特效
+      if (levelUp) {
+        setTimeout(() => {
+          playSound('levelup')
+          triggerConfetti()
+        }, 300)
+      }
     } else if (!newCompleted && task.completed) {
-      // 取消完成时减少金币（但不能小于0）
+      // 取消完成时减少金币和累计积分（但不能小于0）
       newGoldCoins = Math.max(0, goldCoins - task.coins)
+      newTotalXP = Math.max(0, totalXP - task.coins)
     }
 
-    // 如果金币有变化，更新状态并同步到数据库
-    if (newGoldCoins !== goldCoins) {
+    // 更新状态
+    if (newGoldCoins !== goldCoins || newTotalXP !== totalXP) {
       setGoldCoins(newGoldCoins)
+      setTotalXP(newTotalXP)
       
-      // 立即同步金币到数据库
+      // 重新计算等级和称号
+      const levelData = calculateLevelAndTitle(newTotalXP)
+      calculatedLevel = levelData.level
+      calculatedTitle = levelData.title
+      setLevel(calculatedLevel)
+      setCurrentLevelXP(levelData.currentXP)
+      setTitle(calculatedTitle)
+      
+      // 立即同步到数据库
       if (user) {
         try {
           await supabase
             .from("users")
-            .update({ gold_coins: newGoldCoins })
+            .update({ 
+              gold_coins: newGoldCoins,
+              total_xp: newTotalXP,
+              level: calculatedLevel,
+              current_xp: levelData.currentXP
+            })
             .eq("id", user.id)
         } catch (error) {
-          console.error("Error updating gold coins:", error)
-          // 如果更新失败，回滚金币
+          console.error("Error updating user data:", error)
+          // 如果更新失败，回滚
           setGoldCoins(goldCoins)
-          return // 如果数据库更新失败，不更新任务状态
+          setTotalXP(totalXP)
+          return
         }
       }
     }
 
     // 更新任务状态
     setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
+    
+    // 如果升级，显示提示
+    if (levelUp) {
+      setTimeout(() => {
+        alert(`🎉 恭喜升级！你现在是 ${calculatedTitle} (等级 ${calculatedLevel})！`)
+      }, 500)
+    }
   }
 
   const purchaseItem = async (itemId: number, cost: number, itemName: string) => {
@@ -777,6 +955,9 @@ export default function GamifiedDashboard() {
         .update({ gold_coins: newGoldCoins })
         .eq("id", user.id)
 
+      // 播放音效
+      playSound('coin')
+      
       // 重新加载所有已购买商品
       await loadAllPurchasedItems()
 
@@ -865,31 +1046,46 @@ export default function GamifiedDashboard() {
       <div className="mx-auto max-w-7xl">
         {/* Google Material Design Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          {/* 总积分卡片 - Material Design */}
+          {/* 等级和积分卡片 - Material Design */}
           <Card className="material-card bg-white border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-yellow-100 p-2.5">
                   <Trophy className="h-5 w-5 text-yellow-600" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">总积分</p>
-                  <p className="text-2xl font-semibold text-gray-900">{currentLevelXP}</p>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">等级 {level}</p>
+                  <p className="text-lg font-semibold text-gray-900">{title}</p>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">累计积分: {totalXP}</span>
+                      <span className="text-xs text-gray-500">{currentLevelXP}/100</span>
+                    </div>
+                    {/* 等级进度条 */}
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${(currentLevelXP / 100) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* 标题和标语 - Material Design */}
-          <div className="flex-1 text-center min-w-0">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="rounded-full bg-blue-100 p-1.5">
-                <Zap className="h-4 w-4 text-blue-600" />
+          <Card className="material-card bg-white border-0 shadow-sm flex-1 min-w-0">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <div className="rounded-full bg-blue-100 p-1.5">
+                  <Zap className="h-4 w-4 text-blue-600" />
+                </div>
+                <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
               </div>
-              <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
-            </div>
-            <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
-          </div>
+              <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
+            </CardContent>
+          </Card>
 
           {/* 连续登录卡片 - Material Design */}
           <Card className="material-card bg-white border-0 shadow-sm">
@@ -1201,11 +1397,39 @@ export default function GamifiedDashboard() {
                   <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 border border-green-200">在线</span>
                 </div>
 
-                {/* 聊天消息 - Material Design */}
-                <div className="mb-4 rounded-lg bg-blue-50 p-4 border-l-4 border-blue-500 shadow-sm">
-                  <p className="text-sm text-gray-800">
-                    <span className="font-medium text-gray-900">AI 老师</span>: 你好!我是你的AI学习助手。准备好开始今天的学习了吗?
-                  </p>
+                {/* 聊天消息列表 - Material Design */}
+                <div className="mb-4 space-y-2 max-h-[300px] overflow-y-auto">
+                  {chatMessages.length === 0 ? (
+                    <div className="rounded-lg bg-blue-50 p-4 border-l-4 border-blue-500 shadow-sm">
+                      <p className="text-sm text-gray-800">
+                        <span className="font-medium text-gray-900">AI 老师</span>: 你好!我是你的AI学习助手。准备好开始今天的学习了吗?
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[85%] rounded-lg p-3 text-sm ${
+                            msg.role === "user"
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isChatting && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 rounded-lg p-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 输入框 - Material Design */}
@@ -1220,14 +1444,19 @@ export default function GamifiedDashboard() {
                         sendChatMessage()
                       }
                     }}
-                    className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                    disabled={isChatting}
+                    className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <Button
                     onClick={sendChatMessage}
                     disabled={isChatting || !chatInput.trim()}
                     className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <Send className="h-4 w-4" />
+                    {isChatting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </CardContent>

@@ -32,14 +32,33 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建通义千问 DashScope API 请求体（兼容模式使用 OpenAI 格式）
-    const requestBody: any = {
-      model: QWEN_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: type === 'generate-tasks' ? 0.8 : 0.7,
-      max_tokens: type === 'generate-tasks' ? 500 : 1000,
+    let requestBody: any
+    
+    if (type === 'chat' && messages && messages.length > 0) {
+      // 聊天模式：使用完整的消息历史
+      requestBody = {
+        model: QWEN_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map((msg: any) => ({
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: msg.content
+          })),
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+      }
+    } else {
+      // 其他模式：使用单条消息
+      requestBody = {
+        model: QWEN_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: type === 'generate-tasks' ? 0.8 : 0.7,
+        max_tokens: type === 'generate-tasks' ? 500 : 1000,
+      }
     }
 
     // 调用通义千问 DashScope API
@@ -53,17 +72,45 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      const errorData = await response.text()
+      let errorData: any
+      try {
+        errorData = await response.json()
+      } catch {
+        errorData = await response.text()
+      }
       console.error('AI API Error:', errorData)
       return NextResponse.json(
-        { error: 'Failed to call AI API', details: errorData },
+        { 
+          error: 'Failed to call AI API', 
+          details: typeof errorData === 'string' ? errorData : JSON.stringify(errorData),
+          status: response.status 
+        },
         { status: response.status }
       )
     }
 
     const data = await response.json()
+    
     // 兼容模式响应格式：data.choices[0].message.content（OpenAI 兼容格式）
-    const content = data.choices?.[0]?.message?.content || ''
+    let content = ''
+    
+    if (data.choices && data.choices.length > 0) {
+      content = data.choices[0]?.message?.content || ''
+    } else if (data.content) {
+      // 备用格式
+      content = data.content
+    }
+    
+    if (!content && type === 'chat') {
+      console.error('AI API returned empty content:', data)
+      return NextResponse.json(
+        { 
+          error: 'AI API returned empty response', 
+          details: JSON.stringify(data).substring(0, 200) 
+        },
+        { status: 500 }
+      )
+    }
 
     // 如果是生成任务，尝试解析JSON
     if (type === 'generate-tasks') {
