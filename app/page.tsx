@@ -365,6 +365,9 @@ export default function GamifiedDashboard() {
         // 处理连续登录天数
         await updateLoginStreak(data.last_login_date, data.streak || 0)
 
+        // 检查每日宝箱状态
+        checkChestStatus(data.last_chest_date)
+
         // 加载已兑换商品
         await loadPurchasedItems()
         await loadAllPurchasedItems()
@@ -372,6 +375,89 @@ export default function GamifiedDashboard() {
     } catch (error) {
       console.error("Error in loadUserData:", error)
     }
+  }
+
+  // 检查每日宝箱是否可以开启
+  const checkChestStatus = (lastChestDate: string | null) => {
+    if (!lastChestDate) {
+      // 从未开启过宝箱，可以开启
+      setCanOpenChest(true)
+      return
+    }
+
+    const today = new Date().toISOString().split('T')[0]
+    const lastDate = new Date(lastChestDate).toISOString().split('T')[0]
+    
+    // 如果上次开启日期不是今天，则可以开启
+    setCanOpenChest(today !== lastDate)
+  }
+
+  // 开启每日宝箱
+  const openDailyChest = async () => {
+    if (!user || !canOpenChest || isOpeningChest) return
+
+    setIsOpeningChest(true)
+
+    // 生成随机积分（10-50分）
+    const reward = Math.floor(Math.random() * 41) + 10 // 10-50
+
+    // 播放音效
+    playSound('coin')
+
+    // 延迟显示奖励（模拟开箱动画）
+    setTimeout(async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const newTotalXP = totalXP + reward
+        const newGoldCoins = goldCoins + reward
+
+        // 更新数据库
+        const { error } = await supabase
+          .from("users")
+          .update({
+            total_xp: newTotalXP,
+            gold_coins: newGoldCoins,
+            last_chest_date: today,
+            level: calculateLevelAndTitle(newTotalXP).level,
+            current_xp: calculateLevelAndTitle(newTotalXP).currentXP,
+          })
+          .eq("id", user.id)
+
+        if (error) {
+          console.error("Error updating chest reward:", error)
+          setIsOpeningChest(false)
+          return
+        }
+
+        // 更新本地状态
+        setTotalXP(newTotalXP)
+        setGoldCoins(newGoldCoins)
+        setCanOpenChest(false)
+        
+        const { level: newLevel, title: newTitle, currentXP: newCurrentXP } = calculateLevelAndTitle(newTotalXP)
+        setLevel(newLevel)
+        setCurrentLevelXP(newCurrentXP)
+        setTitle(newTitle)
+
+        // 显示奖励
+        setShowChestReward({ reward })
+        
+        // 触发五彩纸屑特效
+        triggerConfetti()
+
+        // 检查是否升级
+        if (newLevel > level) {
+          playSound('levelup')
+          setTimeout(() => {
+            alert(`🎉 恭喜升级！你现在是 ${newTitle}（等级 ${newLevel}）！`)
+          }, 500)
+        }
+      } catch (error) {
+        console.error("Error opening chest:", error)
+      } finally {
+        setIsOpeningChest(false)
+      }
+    }, 800) // 开箱动画延迟
   }
 
   // 更新连续登录天数
@@ -807,6 +893,11 @@ export default function GamifiedDashboard() {
   const [showShop, setShowShop] = useState(false)
   const [showAITutor, setShowAITutor] = useState(false)
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<{ itemId: number; itemName: string; cost: number } | null>(null)
+  
+  // 每日宝箱相关状态
+  const [canOpenChest, setCanOpenChest] = useState(false)
+  const [isOpeningChest, setIsOpeningChest] = useState(false)
+  const [showChestReward, setShowChestReward] = useState<{ reward: number } | null>(null)
 
   const shopItems = [
     { id: 1, name: "看电视一小时", icon: Gamepad2, cost: 200, color: "text-blue-500" },
@@ -957,7 +1048,7 @@ export default function GamifiedDashboard() {
 
       // 播放音效
       playSound('coin')
-      
+
       // 重新加载所有已购买商品
       await loadAllPurchasedItems()
 
@@ -1001,7 +1092,7 @@ export default function GamifiedDashboard() {
   // 如果正在加载认证状态，显示加载界面
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
@@ -1042,7 +1133,7 @@ export default function GamifiedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6" style={{ fontFamily: 'Roboto, sans-serif' }}>
+    <div className="min-h-screen bg-background p-4 md:p-6" style={{ fontFamily: 'Roboto, sans-serif' }}>
       <div className="mx-auto max-w-7xl">
         {/* Google Material Design Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -1067,9 +1158,9 @@ export default function GamifiedDashboard() {
                         className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${(currentLevelXP / 100) * 100}%` }}
                       ></div>
-                    </div>
-                  </div>
-                </div>
+      </div>
+      </div>
+      </div>
               </div>
             </CardContent>
           </Card>
@@ -1080,9 +1171,9 @@ export default function GamifiedDashboard() {
               <div className="flex items-center justify-center gap-2 mb-1">
                 <div className="rounded-full bg-blue-100 p-1.5">
                   <Zap className="h-4 w-4 text-blue-600" />
-                </div>
+                      </div>
                 <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
-              </div>
+                  </div>
               <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
             </CardContent>
           </Card>
@@ -1102,70 +1193,102 @@ export default function GamifiedDashboard() {
             </CardContent>
           </Card>
 
+          {/* 每日宝箱卡片 - Material Design */}
+          <Card className="material-card bg-white border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={openDailyChest}
+                  disabled={!canOpenChest || isOpeningChest}
+                  className={`relative rounded-full p-2.5 transition-all duration-300 ${
+                    canOpenChest
+                      ? "bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 cursor-pointer transform hover:scale-110 animate-pulse"
+                      : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                >
+                  <Gift className={`h-5 w-5 ${canOpenChest ? "text-white" : "text-gray-400"}`} />
+                  {canOpenChest && (
+                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-ping"></div>
+                  )}
+                </button>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">每日宝箱</p>
+                  {isOpeningChest ? (
+                    <p className="text-sm font-semibold text-gray-900">开启中...</p>
+                  ) : canOpenChest ? (
+                    <p className="text-sm font-semibold text-green-600">点击开启</p>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400">今日已开启</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 用户菜单 */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Button
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setShowThemeMenu(!showThemeMenu)}
+                    size="sm"
+                    onClick={() => setShowThemeMenu(!showThemeMenu)}
                 className="h-9 w-9 p-0"
-              >
-                <Palette className="h-4 w-4" />
-              </Button>
-              {showThemeMenu && (
-                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
-                  <button
-                    onClick={() => {
-                      setTheme("light")
-                      setShowThemeMenu(false)
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-t-lg"
-                  >
-                    <Sun className="h-4 w-4" />
-                    <span>浅色</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTheme("dark")
-                      setShowThemeMenu(false)
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                  >
-                    <Moon className="h-4 w-4" />
-                    <span>深色</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTheme("system")
-                      setShowThemeMenu(false)
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
                   >
                     <Palette className="h-4 w-4" />
-                    <span>跟随系统</span>
-                  </button>
+                  </Button>
+                  {showThemeMenu && (
+                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          setTheme("light")
+                          setShowThemeMenu(false)
+                        }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-t-lg"
+                      >
+                        <Sun className="h-4 w-4" />
+                        <span>浅色</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTheme("dark")
+                          setShowThemeMenu(false)
+                        }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                      >
+                        <Moon className="h-4 w-4" />
+                        <span>深色</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTheme("system")
+                          setShowThemeMenu(false)
+                        }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                      >
+                        <Palette className="h-4 w-4" />
+                        <span>跟随系统</span>
+                      </button>
                   <div className="border-t border-gray-200"></div>
-                  <button
-                    onClick={() => {
-                      backgroundInputRef.current?.click()
-                      setShowThemeMenu(false)
-                    }}
+                      <button
+                        onClick={() => {
+                          backgroundInputRef.current?.click()
+                          setShowThemeMenu(false)
+                        }}
                     className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-b-lg"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>更换背景</span>
-                  </button>
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>更换背景</span>
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={backgroundInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBackgroundUpload}
+                    className="hidden"
+                  />
                 </div>
-              )}
-              <input
-                ref={backgroundInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleBackgroundUpload}
-                className="hidden"
-              />
-            </div>
             <div className="relative group">
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -1187,21 +1310,21 @@ export default function GamifiedDashboard() {
                 className="hidden"
               />
             </div>
-            <Button
+                <Button
               variant="ghost"
-              size="sm"
-              onClick={signOut}
+                  size="sm"
+                  onClick={signOut}
               className="text-gray-600 hover:text-gray-800"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                </div>
+              </div>
 
         {/* Main Layout */}
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           {/* 左侧：每日任务 */}
-          <div>
+                  <div>
             {/* 任务标题栏 - Material Design */}
             <div className="mb-4 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 p-4 material-card-elevated shadow-md">
               <div className="flex items-center justify-between">
@@ -1289,9 +1412,9 @@ export default function GamifiedDashboard() {
             </div>
 
             {/* 刷新AI任务按钮 - Material Design */}
-            <Button
+                  <Button
               onClick={refreshTasks}
-              variant="outline"
+                    variant="outline"
               className="mt-4 w-full border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400 font-medium rounded-lg shadow-sm"
               disabled={isGeneratingTasks}
             >
@@ -1306,9 +1429,9 @@ export default function GamifiedDashboard() {
                   刷新 AI 任务
                 </>
               )}
-            </Button>
+                  </Button>
 
-          </div>
+                </div>
 
           {/* 右侧：兑换商店和AI助手 */}
           <div className="space-y-4">
@@ -1350,17 +1473,17 @@ export default function GamifiedDashboard() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                                  {item.name}
-                                </p>
-                              </div>
-                            </div>
+                              {item.name}
+                            </p>
+                          </div>
+                        </div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
                               <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                                 ☆{item.cost} 积分
                               </span>
-                            </div>
-                            <Button
+                      </div>
+                <Button
                               onClick={() => {
                                 if (isPurchased) {
                                   alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
@@ -1372,9 +1495,9 @@ export default function GamifiedDashboard() {
                               }}
                               disabled={isPurchased || !canAfford}
                               className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-                            >
+                >
                               {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "积分不足"}
-                            </Button>
+                </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -1419,7 +1542,7 @@ export default function GamifiedDashboard() {
                           }`}
                         >
                           <p className="whitespace-pre-wrap">{msg.content}</p>
-                        </div>
+              </div>
                       </div>
                     ))
                   )}
@@ -1457,7 +1580,7 @@ export default function GamifiedDashboard() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                  </Button>
+            </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1519,8 +1642,8 @@ export default function GamifiedDashboard() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                              {item.name}
-                            </p>
+                            {item.name}
+                          </p>
                             <p className="text-xs text-gray-500 mb-2">
                               {item.id === 1 && "看你最喜欢的动画片。"}
                               {item.id === 2 && "享受美味的零食时光。"}
@@ -1531,8 +1654,8 @@ export default function GamifiedDashboard() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
                               <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">☆{item.cost} 积分</span>
-                            </div>
-                            <Button
+                      </div>
+                      <Button
                               onClick={() => {
                                 if (isPurchased) {
                                   alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
@@ -1544,10 +1667,10 @@ export default function GamifiedDashboard() {
                               }}
                               disabled={isPurchased || !canAfford}
                               className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
+                      >
                               {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "积分不足"}
-                            </Button>
-                          </div>
+                      </Button>
+                    </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1573,18 +1696,18 @@ export default function GamifiedDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-green-600 font-medium">在线</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setShowAITutor(false)
-                      setChatMessages([])
-                      setChatInput("")
-                    }}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowAITutor(false)
+                    setChatMessages([])
+                    setChatInput("")
+                  }}
                     className="h-8 w-8 text-gray-600 hover:bg-gray-100"
-                  >
+                >
                     <X className="h-5 w-5" />
-                  </Button>
+                </Button>
                 </div>
               </div>
 
@@ -1651,6 +1774,44 @@ export default function GamifiedDashboard() {
         </div>
       )}
 
+      {/* Daily Chest Reward Modal */}
+      {showChestReward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <Card className="relative w-full max-w-md bg-white shadow-lg animate-in fade-in zoom-in duration-300">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="relative">
+                    <Gift className="h-20 w-20 text-yellow-500 animate-bounce" />
+                    <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-yellow-400 animate-pulse" />
+                    <Sparkles className="absolute -bottom-2 -left-2 h-6 w-6 text-orange-400 animate-pulse" style={{ animationDelay: '0.5s' }} />
+                  </div>
+                </div>
+                <h2 className="mb-2 text-2xl font-bold text-gray-800">🎉 恭喜获得！</h2>
+                <div className="mb-4 rounded-lg bg-gradient-to-r from-yellow-100 to-orange-100 p-6">
+                  <p className="text-sm text-gray-600 mb-2">今日宝箱奖励</p>
+                  <p className="text-4xl font-bold text-orange-600">
+                    +{showChestReward.reward} 积分
+                  </p>
+                </div>
+                <p className="mb-4 text-sm text-gray-500">
+                  积分已自动添加到你的账户中
+                </p>
+                <Button
+                  onClick={() => {
+                    setShowChestReward(null)
+                    triggerConfetti() // 再次触发特效
+                  }}
+                  className="w-full rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-3 text-white hover:from-yellow-600 hover:to-orange-600 font-medium shadow-lg"
+                >
+                  太棒了！
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Purchase Confirmation Modal - Google Style */}
       {showPurchaseConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -1676,10 +1837,10 @@ export default function GamifiedDashboard() {
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600">
                     需要花费 <span className="font-semibold text-lg text-purple-600">{showPurchaseConfirm.cost}</span> 积分
-                  </p>
+                </p>
                   <p className="text-sm text-gray-600">
                     当前余额: <span className="font-semibold text-base text-gray-800">{goldCoins}</span>
-                  </p>
+                </p>
                 </div>
                 <p className="mt-4 text-xs text-gray-500">
                   每个商品每天只能兑换一次，明天可以再次兑换
@@ -1749,19 +1910,19 @@ export default function GamifiedDashboard() {
                           <div className="flex items-center gap-3">
                             <div className="rounded-lg p-2 bg-gray-100">
                               <ItemIcon className="h-5 w-5 text-gray-600" />
-                            </div>
+                          </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-800 mb-1">
-                                {purchasedItem.item_name}
-                              </p>
+                              {purchasedItem.item_name}
+                            </p>
                               <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                                 <span className="text-xs text-gray-500">已兑换</span>
                                 <span className="text-sm font-semibold text-gray-800">{purchasedItem.count}</span>
                                 <span className="text-xs text-gray-500">次</span>
-                              </div>
-                            </div>
                           </div>
+                        </div>
+                      </div>
                         </CardContent>
                       </Card>
                     )
