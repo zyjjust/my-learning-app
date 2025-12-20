@@ -344,7 +344,8 @@ export default function GamifiedDashboard() {
       }
 
       if (data) {
-        const totalXPValue = data.total_xp || 0
+        // 确保total_xp是数字类型，防止字符串拼接问题
+        const totalXPValue = typeof data.total_xp === 'number' ? data.total_xp : parseInt(data.total_xp || '0', 10) || 0
         setTotalXP(totalXPValue)
         
         // 根据累计积分计算等级和称号
@@ -465,7 +466,11 @@ export default function GamifiedDashboard() {
     if (!user) return
 
     const today = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
+    // 计算昨天的日期（考虑时区）
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterday = yesterdayDate.toISOString().split('T')[0]
 
     let newStreak = currentStreak
 
@@ -473,26 +478,38 @@ export default function GamifiedDashboard() {
       // 首次登录
       newStreak = 1
     } else if (lastLoginDate === today) {
-      // 今天已登录，不增加
+      // 今天已登录，不增加（可能是刷新页面）
       newStreak = currentStreak
-    } else if (lastLoginDate === yesterday) {
-      // 昨天登录，今天继续，累加
-      newStreak = currentStreak + 1
     } else {
-      // 中断了，重置为1
-      newStreak = 1
+      // 计算日期差
+      const lastDate = new Date(lastLoginDate)
+      const todayDate = new Date(today)
+      const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysDiff === 1) {
+        // 昨天登录，今天继续，累加
+        newStreak = currentStreak + 1
+      } else if (daysDiff > 1) {
+        // 中断了，重置为1
+        newStreak = 1
+      } else {
+        // 同一天或未来日期，保持原值
+        newStreak = currentStreak
+      }
     }
 
     setStreak(newStreak)
 
-    // 更新数据库
-    await supabase
-      .from("users")
-      .update({
-        streak: newStreak,
-        last_login_date: today,
-      })
-      .eq("id", user.id)
+    // 更新数据库（只在日期变化时更新）
+    if (!lastLoginDate || lastLoginDate !== today) {
+      await supabase
+        .from("users")
+        .update({
+          streak: newStreak,
+          last_login_date: today,
+        })
+        .eq("id", user.id)
+    }
   }
 
   // 加载已兑换商品（今天已兑换的商品ID列表）
@@ -617,13 +634,69 @@ export default function GamifiedDashboard() {
     }
   }, [user])
 
-  // 在组件加载时生成任务
+  // 在用户登录时检查是否需要生成任务（每天只生成一次）
   useEffect(() => {
-    loadTasks()
-  }, [])
+    if (user) {
+      // 使用 setTimeout 确保在 loadUserData 完成后再检查任务
+      const timer = setTimeout(() => {
+        checkAndLoadTasks()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [user])
+
+  // 检查是否需要生成任务（每天只生成一次）
+  const checkAndLoadTasks = async () => {
+    if (!user) return
+
+    try {
+      // 从数据库获取上次生成任务的日期
+      const { data, error } = await supabase
+        .from("users")
+        .select("last_tasks_date")
+        .eq("id", user.id)
+        .single()
+
+      const today = new Date().toISOString().split('T')[0]
+      const lastTasksDate = data?.last_tasks_date
+
+      // 如果字段不存在或今天还没有生成任务，则生成（包括AI任务）
+      if (error || !lastTasksDate || lastTasksDate !== today) {
+        await loadTasks(true) // 传入true表示需要更新数据库
+      } else {
+        // 如果今天已生成，从localStorage恢复任务状态
+        const savedTasks = localStorage.getItem(`tasks_${user.id}_${today}`)
+        if (savedTasks) {
+          try {
+            const parsedTasks = JSON.parse(savedTasks)
+            // 确保任务数量正确（应该有5个任务：2个固定+3个AI）
+            if (parsedTasks && parsedTasks.length >= 5) {
+              setTasks(parsedTasks)
+            } else {
+              // 如果任务数量不对，重新生成
+              console.log("任务数量不正确，重新生成")
+              await loadTasks(true)
+            }
+          } catch (parseError) {
+            console.error("解析任务失败，重新生成:", parseError)
+            // 解析失败，重新生成
+            await loadTasks(true)
+          }
+        } else {
+          // localStorage中没有任务，重新生成
+          console.log("localStorage中没有任务，重新生成")
+          await loadTasks(true)
+        }
+      }
+    } catch (error) {
+      console.error("Error checking tasks:", error)
+      // 出错时也生成任务
+      await loadTasks(true)
+    }
+  }
 
   // 加载任务：2个固定任务（课后作业、运动打卡）+ 3个AI生成任务
-  const loadTasks = async () => {
+  const loadTasks = async (updateDate: boolean = false) => {
     setIsGeneratingTasks(true)
     try {
       // 生成2个固定任务：课后作业、运动打卡
@@ -631,9 +704,34 @@ export default function GamifiedDashboard() {
       // 调用通义千问API生成3个任务
       const aiTasks = await generateAITasks()
       // 组合任务：固定任务在前，AI任务在后
-      setTasks([...fixedTasks, ...aiTasks])
+      const allTasks = [...fixedTasks, ...aiTasks]
+      
+      // 先保存任务到localStorage（用于恢复状态）
+      const today = new Date().toISOString().split('T')[0]
+      if (user) {
+        localStorage.setItem(`tasks_${user.id}_${today}`, JSON.stringify(allTasks))
+      }
+      
+      // 设置任务状态（在保存localStorage之后）
+      setTasks(allTasks)
+
+      // 如果需要更新日期，更新数据库（在设置任务之后，避免被覆盖）
+      if (updateDate && user) {
+        // 立即更新数据库，但确保任务已经设置
+        const updateResult = await supabase
+          .from("users")
+          .update({ last_tasks_date: today })
+          .eq("id", user.id)
+        
+        if (updateResult.error) {
+          console.error("Error updating last_tasks_date:", updateResult.error)
+        }
+      }
     } catch (error) {
       console.error("Error loading tasks:", error)
+      // 如果AI任务生成失败，至少显示固定任务
+      const fixedTasks = generateFixedTasks()
+      setTasks(fixedTasks)
     } finally {
       setIsGeneratingTasks(false)
     }
@@ -654,6 +752,15 @@ export default function GamifiedDashboard() {
         return existingTask ? { ...newTask, completed: existingTask.completed } : newTask
       })
       setTasks(updatedTasks)
+      
+      // 更新任务生成日期
+      if (user) {
+        const today = new Date().toISOString().split('T')[0]
+        await supabase
+          .from("users")
+          .update({ last_tasks_date: today })
+          .eq("id", user.id)
+      }
     } catch (error) {
       console.error("Error refreshing tasks:", error)
     } finally {
@@ -727,101 +834,125 @@ export default function GamifiedDashboard() {
   // 处理背景图上传
   const handleBackgroundUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      // 重置input，允许再次选择同一文件
+      if (event.target) {
+        event.target.value = ''
+      }
+      return
+    }
 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
-      alert("请上传图片文件")
+      alert("请上传图片文件（JPG、PNG、WebP等格式）")
+      event.target.value = ''
       return
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("图片大小不能超过10MB")
+      alert("图片大小不能超过10MB，请选择较小的图片")
+      event.target.value = ''
       return
     }
 
+    // 显示上传提示
+    const uploadMessage = user ? "正在上传背景图..." : "正在处理背景图..."
+    console.log(uploadMessage)
+
     try {
-      let imageUrl: string
+      let imageUrl: string | null = null
 
-      // 上传到 Supabase Storage
+      // 优先尝试上传到 Supabase Storage（如果已登录）
       if (user) {
-        const fileExt = file.name.split(".").pop()
-        const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
-        const filePath = `backgrounds/${fileName}`
+        try {
+          const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg'
+          const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
+          const filePath = `backgrounds/${fileName}`
 
-        // 确保 backgrounds bucket 存在（如果不存在，会在上传时创建，但需要先在 Supabase 中创建）
-        const { error: uploadError } = await supabase.storage
-          .from("backgrounds")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          })
+          // 尝试上传到 Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("backgrounds")
+            .upload(filePath, file, {
+              cacheControl: "3600",
+              upsert: false,
+            })
 
-        if (uploadError) {
-          // 如果上传失败，使用 base64 作为备用
+          if (!uploadError && uploadData) {
+            // 上传成功，获取公共 URL
+            const { data: urlData } = supabase.storage.from("backgrounds").getPublicUrl(filePath)
+            if (urlData && urlData.publicUrl) {
+              imageUrl = urlData.publicUrl
+              console.log("背景图已上传到 Supabase Storage:", imageUrl)
+            }
+          } else {
+            console.warn("Supabase Storage 上传失败，使用 base64 备用方案:", uploadError?.message)
+          }
+        } catch (storageError) {
+          console.warn("Supabase Storage 不可用，使用 base64 备用方案:", storageError)
+        }
+      }
+
+      // 如果 Storage 上传失败或未登录，使用 base64
+      if (!imageUrl) {
+        imageUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onloadend = () => {
             const result = reader.result as string
-            imageUrl = result
-            setBackgroundImageUrl(result)
-            localStorage.setItem('backgroundImageUrl', result)
-            // 保存到数据库
-            saveBackgroundToSupabase(result)
+            resolve(result)
           }
+          reader.onerror = reject
           reader.readAsDataURL(file)
-          return
-        }
-
-        // 获取公共 URL
-        const { data } = supabase.storage.from("backgrounds").getPublicUrl(filePath)
-        imageUrl = data.publicUrl
-      } else {
-        // 未登录用户使用 base64
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const result = reader.result as string
-          imageUrl = result
-          setBackgroundImageUrl(result)
-          localStorage.setItem('backgroundImageUrl', result)
-        }
-        reader.readAsDataURL(file)
-        return
+        })
+        console.log("使用 base64 格式保存背景图")
       }
 
       // 更新状态和本地存储
-      setBackgroundImageUrl(imageUrl)
-      localStorage.setItem('backgroundImageUrl', imageUrl)
-      
-      // 保存到数据库
-      if (user) {
-        await saveBackgroundToSupabase(imageUrl)
-      }
-    } catch (error) {
-      console.error("Error uploading background:", error)
-      // 备用方案：使用 base64
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        setBackgroundImageUrl(result)
-        localStorage.setItem('backgroundImageUrl', result)
+      if (imageUrl) {
+        setBackgroundImageUrl(imageUrl)
+        localStorage.setItem('backgroundImageUrl', imageUrl)
+        
+        // 保存到数据库（如果已登录）
         if (user) {
-          saveBackgroundToSupabase(result)
+          const saveResult = await saveBackgroundToSupabase(imageUrl)
+          if (saveResult) {
+            alert("背景图已成功更换！")
+          }
+        } else {
+          alert("背景图已成功更换！（未登录状态，仅保存在本地）")
         }
+      } else {
+        throw new Error("无法处理图片文件")
       }
-      reader.readAsDataURL(file)
+    } catch (error: any) {
+      console.error("Error uploading background:", error)
+      alert(`上传背景图失败：${error.message || "未知错误"}。请重试或选择其他图片。`)
+    } finally {
+      // 重置input，允许再次选择同一文件
+      if (event.target) {
+        event.target.value = ''
+      }
     }
   }
 
   // 保存背景图到 Supabase 数据库
-  const saveBackgroundToSupabase = async (imageUrl: string) => {
-    if (!user) return
+  const saveBackgroundToSupabase = async (imageUrl: string): Promise<boolean> => {
+    if (!user) return false
     try {
-      await supabase
+      const { error } = await supabase
         .from("users")
         .update({ background_image_url: imageUrl })
         .eq("id", user.id)
+      
+      if (error) {
+        console.error("Error saving background to database:", error)
+        return false
+      } else {
+        console.log("Background saved successfully to database")
+        return true
+      }
     } catch (error) {
       console.error("Error saving background to database:", error)
+      return false
     }
   }
 
@@ -919,9 +1050,9 @@ export default function GamifiedDashboard() {
     let calculatedTitle = title
 
     if (newCompleted && !task.completed) {
-      // 完成任务时增加金币和累计积分
+      // 完成任务时增加金币和累计积分（不设上限）
       newGoldCoins = goldCoins + task.coins
-      newTotalXP = totalXP + task.coins
+      newTotalXP = totalXP + task.coins // 累计积分不设上限，可以无限累加
       
       // 检查是否升级
       const oldLevel = Math.floor(totalXP / 100) + 1
@@ -962,7 +1093,7 @@ export default function GamifiedDashboard() {
       // 立即同步到数据库
       if (user) {
         try {
-          await supabase
+          const { error } = await supabase
             .from("users")
             .update({ 
               gold_coins: newGoldCoins,
@@ -971,6 +1102,19 @@ export default function GamifiedDashboard() {
               current_xp: levelData.currentXP
             })
             .eq("id", user.id)
+          
+          if (error) {
+            console.error("Error updating user data:", error)
+            // 如果更新失败，回滚
+            setGoldCoins(goldCoins)
+            setTotalXP(totalXP)
+            return
+          }
+          
+          // 保存任务状态到localStorage
+          const today = new Date().toISOString().split('T')[0]
+          const updatedTasks = tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+          localStorage.setItem(`tasks_${user.id}_${today}`, JSON.stringify(updatedTasks))
         } catch (error) {
           console.error("Error updating user data:", error)
           // 如果更新失败，回滚
@@ -981,8 +1125,10 @@ export default function GamifiedDashboard() {
       }
     }
 
-    // 更新任务状态
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
+    // 更新任务状态（只在状态变化时更新）
+    if (newCompleted !== task.completed) {
+      setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)))
+    }
     
     // 如果升级，显示提示
     if (levelUp) {
@@ -1171,7 +1317,7 @@ export default function GamifiedDashboard() {
               <div className="flex items-center justify-center gap-2 mb-1">
                 <div className="rounded-full bg-blue-100 p-1.5">
                   <Zap className="h-4 w-4 text-blue-600" />
-                      </div>
+      </div>
                 <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
                   </div>
               <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
@@ -1184,11 +1330,11 @@ export default function GamifiedDashboard() {
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-orange-100 p-2.5">
                   <Flame className="h-5 w-5 text-orange-600" />
-                </div>
+                      </div>
                 <div>
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">连续登录</p>
                   <p className="text-2xl font-semibold text-gray-900">{streak}天</p>
-                </div>
+                  </div>
               </div>
             </CardContent>
           </Card>
@@ -1197,7 +1343,7 @@ export default function GamifiedDashboard() {
           <Card className="material-card bg-white border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <button
+                  <button
                   onClick={openDailyChest}
                   disabled={!canOpenChest || isOpeningChest}
                   className={`relative rounded-full p-2.5 transition-all duration-300 ${
@@ -1210,7 +1356,7 @@ export default function GamifiedDashboard() {
                   {canOpenChest && (
                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-ping"></div>
                   )}
-                </button>
+                  </button>
                 <div className="flex-1">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">每日宝箱</p>
                   {isOpeningChest ? (
@@ -1220,8 +1366,8 @@ export default function GamifiedDashboard() {
                   ) : (
                     <p className="text-sm font-semibold text-gray-400">今日已开启</p>
                   )}
+                  </div>
                 </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -1307,9 +1453,9 @@ export default function GamifiedDashboard() {
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarUpload}
-                className="hidden"
-              />
-            </div>
+                    className="hidden"
+                  />
+                </div>
                 <Button
               variant="ghost"
                   size="sm"
@@ -1359,8 +1505,8 @@ export default function GamifiedDashboard() {
                 return (
                   <Card
                     key={task.id}
-                    className={`material-card bg-white border-0 shadow-sm hover:shadow-md transition-shadow ${
-                      task.completed ? "opacity-60" : ""
+                    className={`material-card bg-white border-0 shadow-sm transition-shadow ${
+                      task.completed ? "opacity-60 cursor-not-allowed" : "hover:shadow-md cursor-pointer"
                     }`}
                   >
                     <CardContent className="p-4">
@@ -1392,13 +1538,14 @@ export default function GamifiedDashboard() {
 
                         {/* 完成按钮 - Material Design Radio Button */}
                         <button
-                          onClick={() => toggleTask(task.id)}
+                          onClick={() => !task.completed && toggleTask(task.id)}
+                          disabled={task.completed}
                           className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 ${
                             task.completed
-                              ? "border-green-500 bg-green-500"
-                              : "border-gray-300 hover:border-gray-400 bg-white"
+                              ? "border-green-500 bg-green-500 cursor-not-allowed opacity-60"
+                              : "border-gray-300 hover:border-gray-400 bg-white cursor-pointer"
                           }`}
-                          aria-label={task.completed ? "取消完成" : "完成任务"}
+                          aria-label={task.completed ? "已完成" : "完成任务"}
                         >
                           {task.completed && (
                             <div className="h-2 w-2 rounded-full bg-white"></div>
