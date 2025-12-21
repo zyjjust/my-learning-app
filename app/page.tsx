@@ -345,8 +345,16 @@ export default function GamifiedDashboard() {
 
       if (data) {
         // 确保total_xp是数字类型，防止字符串拼接问题
-        const totalXPValue = typeof data.total_xp === 'number' ? data.total_xp : parseInt(data.total_xp || '0', 10) || 0
+        const totalXPValue = typeof data.total_xp === 'number' ? data.total_xp : parseInt(String(data.total_xp || 0), 10) || 0
         setTotalXP(totalXPValue)
+        console.log("从数据库加载用户数据:", {
+          total_xp: totalXPValue,
+          total_xp_raw: data.total_xp,
+          total_xp_type: typeof data.total_xp,
+          gold_coins: data.gold_coins,
+          level: data.level,
+          user_id: user.id
+        })
         
         // 根据累计积分计算等级和称号
         const { level: calculatedLevel, title: calculatedTitle, currentXP } = calculateLevelAndTitle(totalXPValue)
@@ -354,7 +362,10 @@ export default function GamifiedDashboard() {
         setCurrentLevelXP(currentXP)
         setTitle(calculatedTitle)
         
-        setGoldCoins(data.gold_coins || 0)
+        // 确保gold_coins是数字类型
+        const goldCoinsValue = typeof data.gold_coins === 'number' ? data.gold_coins : parseInt(String(data.gold_coins || 0), 10) || 0
+        setGoldCoins(goldCoinsValue)
+        console.log("从数据库加载金币:", goldCoinsValue, "类型:", typeof goldCoinsValue)
         if (data.avatar_url) {
           setAvatarUrl(data.avatar_url)
         }
@@ -363,8 +374,9 @@ export default function GamifiedDashboard() {
           localStorage.setItem('backgroundImageUrl', data.background_image_url)
         }
 
-        // 处理连续登录天数
-        await updateLoginStreak(data.last_login_date, data.streak || 0)
+        // 处理连续登录天数（确保streak是数字类型）
+        const streakValue = typeof data.streak === 'number' ? data.streak : parseInt(String(data.streak || 0), 10) || 0
+        await updateLoginStreak(data.last_login_date, streakValue)
 
         // 检查每日宝箱状态
         checkChestStatus(data.last_chest_date)
@@ -409,25 +421,43 @@ export default function GamifiedDashboard() {
     setTimeout(async () => {
       try {
         const today = new Date().toISOString().split('T')[0]
-        const newTotalXP = totalXP + reward
-        const newGoldCoins = goldCoins + reward
+        // 确保使用数字类型进行计算
+        const currentTotalXP = typeof totalXP === 'number' ? totalXP : parseInt(String(totalXP || 0), 10)
+        const currentGoldCoins = typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10)
+        const rewardValue = typeof reward === 'number' ? reward : parseInt(String(reward || 0), 10)
+        
+        const newTotalXP = currentTotalXP + rewardValue
+        const newGoldCoins = currentGoldCoins + rewardValue
 
-        // 更新数据库
-        const { error } = await supabase
+        // 更新数据库（确保所有值都是数字类型）
+        const levelData = calculateLevelAndTitle(newTotalXP)
+        const updateData = {
+          total_xp: typeof newTotalXP === 'number' ? newTotalXP : parseInt(String(newTotalXP || 0), 10),
+          gold_coins: typeof newGoldCoins === 'number' ? newGoldCoins : parseInt(String(newGoldCoins || 0), 10),
+          last_chest_date: today,
+          level: typeof levelData.level === 'number' ? levelData.level : parseInt(String(levelData.level || 1), 10),
+          current_xp: typeof levelData.currentXP === 'number' ? levelData.currentXP : parseInt(String(levelData.currentXP || 0), 10),
+        }
+        
+        const { error, data: updateResult } = await supabase
           .from("users")
-          .update({
-            total_xp: newTotalXP,
-            gold_coins: newGoldCoins,
-            last_chest_date: today,
-            level: calculateLevelAndTitle(newTotalXP).level,
-            current_xp: calculateLevelAndTitle(newTotalXP).currentXP,
-          })
+          .update(updateData)
           .eq("id", user.id)
+          .select()
 
         if (error) {
           console.error("Error updating chest reward:", error)
+          alert(`保存宝箱奖励失败：${error.message || "未知错误"}`)
           setIsOpeningChest(false)
           return
+        }
+        
+        // 验证数据是否成功保存
+        if (updateResult && updateResult.length > 0) {
+          console.log("宝箱奖励已成功保存到数据库:", {
+            total_xp: updateResult[0].total_xp,
+            gold_coins: updateResult[0].gold_coins
+          })
         }
 
         // 更新本地状态
@@ -466,49 +496,57 @@ export default function GamifiedDashboard() {
     if (!user) return
 
     const today = new Date().toISOString().split('T')[0]
-    
-    // 计算昨天的日期（考虑时区）
-    const yesterdayDate = new Date()
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-    const yesterday = yesterdayDate.toISOString().split('T')[0]
+    // 确保currentStreak是数字类型
+    const streakValue = typeof currentStreak === 'number' ? currentStreak : parseInt(String(currentStreak || 0), 10) || 0
 
-    let newStreak = currentStreak
+    let newStreak = streakValue
 
     if (!lastLoginDate) {
-      // 首次登录
+      // 首次登录，设置为1天
       newStreak = 1
     } else if (lastLoginDate === today) {
-      // 今天已登录，不增加（可能是刷新页面）
-      newStreak = currentStreak
+      // 今天已登录过（可能是刷新页面），保持当前天数
+      // 但如果当前天数是0或null，说明是首次登录，应该设置为1
+      newStreak = streakValue > 0 ? streakValue : 1
     } else {
       // 计算日期差
-      const lastDate = new Date(lastLoginDate)
-      const todayDate = new Date(today)
+      const lastDate = new Date(lastLoginDate + 'T00:00:00')
+      const todayDate = new Date(today + 'T00:00:00')
       const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
       
       if (daysDiff === 1) {
         // 昨天登录，今天继续，累加
-        newStreak = currentStreak + 1
+        // 如果之前的天数是0，说明是首次连续登录，应该设置为1
+        newStreak = streakValue > 0 ? streakValue + 1 : 1
       } else if (daysDiff > 1) {
-        // 中断了，重置为1
-        newStreak = 1
+      // 中断了，重置为1
+      newStreak = 1
+      } else if (daysDiff === 0) {
+        // 同一天，保持原值（但如果为0则设为1）
+        newStreak = streakValue > 0 ? streakValue : 1
       } else {
-        // 同一天或未来日期，保持原值
-        newStreak = currentStreak
+        // 未来日期（不应该发生），保持原值或设为1
+        newStreak = streakValue > 0 ? streakValue : 1
       }
     }
 
     setStreak(newStreak)
 
-    // 更新数据库（只在日期变化时更新）
+    // 更新数据库（只在日期变化时更新，或者首次登录时）
     if (!lastLoginDate || lastLoginDate !== today) {
-      await supabase
-        .from("users")
-        .update({
-          streak: newStreak,
-          last_login_date: today,
-        })
-        .eq("id", user.id)
+      const { error } = await supabase
+      .from("users")
+      .update({
+        streak: newStreak,
+        last_login_date: today,
+      })
+      .eq("id", user.id)
+      
+      if (error) {
+        console.error("Error updating login streak:", error)
+      } else {
+        console.log(`连续登录天数已更新: ${newStreak}天`)
+      }
     }
   }
 
@@ -582,29 +620,52 @@ export default function GamifiedDashboard() {
     if (!user) return
 
     try {
-      const { error } = await supabase
+      // 确保所有值都是数字类型
+      const updateData = {
+        level: typeof level === 'number' ? level : parseInt(String(level || 1), 10),
+        current_xp: typeof currentLevelXP === 'number' ? currentLevelXP : parseInt(String(currentLevelXP || 0), 10),
+        total_xp: typeof totalXP === 'number' ? totalXP : parseInt(String(totalXP || 0), 10),
+        gold_coins: typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10),
+        streak: typeof streak === 'number' ? streak : parseInt(String(streak || 0), 10),
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+      }
+      
+      console.log("准备同步用户数据到数据库:", updateData)
+      
+      const { error, data } = await supabase
         .from("users")
-        .update({
-          level,
-          current_xp: currentLevelXP,
-          total_xp: totalXP,
-          gold_coins: goldCoins,
-          streak,
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", user.id)
+        .select()
 
       if (error) {
-        console.error("Error syncing user data:", error)
-      } else {
+        console.error("❌ 同步用户数据失败:", error)
+        console.error("失败的数据:", updateData)
+      } else if (data && data.length > 0) {
+        const savedData = data[0]
+        console.log("✅ 用户数据已同步到数据库:", {
+          total_xp: savedData.total_xp,
+          total_xp_type: typeof savedData.total_xp,
+          gold_coins: savedData.gold_coins,
+          level: savedData.level,
+          current_xp: savedData.current_xp
+        })
+        
+        // 验证保存的数据
+        if (savedData.total_xp !== updateData.total_xp) {
+          console.warn("⚠️ 同步的积分与预期不一致:", {
+            预期: updateData.total_xp,
+            实际: savedData.total_xp
+          })
+        }
         // 更新本地用户信息
         setUser({
           ...user,
-          level,
-          current_xp: currentLevelXP,
-          gold_coins: goldCoins,
-          streak,
+          level: updateData.level,
+          current_xp: updateData.current_xp,
+          gold_coins: updateData.gold_coins,
+          streak: updateData.streak,
           avatar_url: avatarUrl || undefined,
         })
       }
@@ -866,16 +927,16 @@ export default function GamifiedDashboard() {
       if (user) {
         try {
           const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg'
-          const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
-          const filePath = `backgrounds/${fileName}`
+        const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
+        const filePath = `backgrounds/${fileName}`
 
           // 尝试上传到 Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("backgrounds")
-            .upload(filePath, file, {
-              cacheControl: "3600",
-              upsert: false,
-            })
+          .from("backgrounds")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          })
 
           if (!uploadError && uploadData) {
             // 上传成功，获取公共 URL
@@ -895,24 +956,24 @@ export default function GamifiedDashboard() {
       // 如果 Storage 上传失败或未登录，使用 base64
       if (!imageUrl) {
         imageUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => {
-            const result = reader.result as string
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
             resolve(result)
-          }
+        }
           reader.onerror = reject
-          reader.readAsDataURL(file)
+        reader.readAsDataURL(file)
         })
         console.log("使用 base64 格式保存背景图")
       }
 
       // 更新状态和本地存储
       if (imageUrl) {
-        setBackgroundImageUrl(imageUrl)
-        localStorage.setItem('backgroundImageUrl', imageUrl)
-        
+      setBackgroundImageUrl(imageUrl)
+      localStorage.setItem('backgroundImageUrl', imageUrl)
+      
         // 保存到数据库（如果已登录）
-        if (user) {
+      if (user) {
           const saveResult = await saveBackgroundToSupabase(imageUrl)
           if (saveResult) {
             alert("背景图已成功更换！")
@@ -1042,39 +1103,43 @@ export default function GamifiedDashboard() {
     const task = tasks.find((t) => t.id === id)
     if (!task) return
 
-    const newCompleted = !task.completed
+    // 如果任务已完成，不允许再次点击
+    if (task.completed) {
+      return
+    }
+
+    const newCompleted = true // 只能标记为完成，不能取消
     let newGoldCoins = goldCoins
     let newTotalXP = totalXP
     let levelUp = false
     let calculatedLevel = level
     let calculatedTitle = title
 
-    if (newCompleted && !task.completed) {
-      // 完成任务时增加金币和累计积分（不设上限）
-      newGoldCoins = goldCoins + task.coins
-      newTotalXP = totalXP + task.coins // 累计积分不设上限，可以无限累加
-      
-      // 检查是否升级
-      const oldLevel = Math.floor(totalXP / 100) + 1
-      const newLevel = Math.floor(newTotalXP / 100) + 1
-      levelUp = newLevel > oldLevel
-      
-      // 播放音效和特效
-      playSound('complete')
-      playSound('coin')
-      triggerConfetti()
-      
-      // 如果升级，播放升级音效和特效
-      if (levelUp) {
-        setTimeout(() => {
-          playSound('levelup')
-          triggerConfetti()
-        }, 300)
-      }
-    } else if (!newCompleted && task.completed) {
-      // 取消完成时减少金币和累计积分（但不能小于0）
-      newGoldCoins = Math.max(0, goldCoins - task.coins)
-      newTotalXP = Math.max(0, totalXP - task.coins)
+    // 完成任务时增加金币和累计积分（不设上限）
+    // 确保使用数字类型进行计算，防止字符串拼接
+    const taskCoins = typeof task.coins === 'number' ? task.coins : parseInt(String(task.coins || 0), 10)
+    const currentTotalXP = typeof totalXP === 'number' ? totalXP : parseInt(String(totalXP || 0), 10)
+    const currentGoldCoins = typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10)
+    
+    newGoldCoins = currentGoldCoins + taskCoins
+    newTotalXP = currentTotalXP + taskCoins // 累计积分不设上限，可以无限累加
+    
+    // 检查是否升级
+    const oldLevel = Math.floor(currentTotalXP / 100) + 1
+    const newLevel = Math.floor(newTotalXP / 100) + 1
+    levelUp = newLevel > oldLevel
+    
+    // 播放音效和特效
+    playSound('complete')
+    playSound('coin')
+    triggerConfetti()
+    
+    // 如果升级，播放升级音效和特效
+    if (levelUp) {
+      setTimeout(() => {
+        playSound('levelup')
+        triggerConfetti()
+      }, 300)
     }
 
     // 更新状态
@@ -1093,30 +1158,61 @@ export default function GamifiedDashboard() {
       // 立即同步到数据库
       if (user) {
         try {
-          const { error } = await supabase
+          // 确保所有值都是数字类型
+          const updateData = {
+            gold_coins: typeof newGoldCoins === 'number' ? newGoldCoins : parseInt(String(newGoldCoins || 0), 10),
+            total_xp: typeof newTotalXP === 'number' ? newTotalXP : parseInt(String(newTotalXP || 0), 10),
+            level: typeof calculatedLevel === 'number' ? calculatedLevel : parseInt(String(calculatedLevel || 1), 10),
+            current_xp: typeof levelData.currentXP === 'number' ? levelData.currentXP : parseInt(String(levelData.currentXP || 0), 10)
+          }
+          
+          console.log("准备更新数据库，数据:", updateData)
+          
+          const { error, data: updateResult } = await supabase
             .from("users")
-            .update({ 
-              gold_coins: newGoldCoins,
-              total_xp: newTotalXP,
-              level: calculatedLevel,
-              current_xp: levelData.currentXP
-            })
+            .update(updateData)
             .eq("id", user.id)
+            .select()
           
           if (error) {
             console.error("Error updating user data:", error)
+            console.error("更新失败的数据:", updateData)
+            alert(`保存积分失败：${error.message || "未知错误"}。请检查数据库字段是否存在。`)
             // 如果更新失败，回滚
             setGoldCoins(goldCoins)
             setTotalXP(totalXP)
             return
           }
           
+          // 验证数据是否成功保存
+          if (updateResult && updateResult.length > 0) {
+            const savedData = updateResult[0]
+            console.log("✅ 积分已成功保存到数据库:", {
+              total_xp: savedData.total_xp,
+              total_xp_type: typeof savedData.total_xp,
+              gold_coins: savedData.gold_coins,
+              level: savedData.level,
+              current_xp: savedData.current_xp
+            })
+            
+            // 验证保存的数据是否与预期一致
+            if (savedData.total_xp !== updateData.total_xp) {
+              console.warn("⚠️ 保存的积分与预期不一致:", {
+                预期: updateData.total_xp,
+                实际: savedData.total_xp
+              })
+            }
+          } else {
+            console.warn("⚠️ 数据库更新成功但没有返回数据")
+          }
+          
           // 保存任务状态到localStorage
           const today = new Date().toISOString().split('T')[0]
-          const updatedTasks = tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+          const updatedTasks = tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t))
           localStorage.setItem(`tasks_${user.id}_${today}`, JSON.stringify(updatedTasks))
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error updating user data:", error)
+          alert(`保存积分失败：${error.message || "未知错误"}`)
           // 如果更新失败，回滚
           setGoldCoins(goldCoins)
           setTotalXP(totalXP)
