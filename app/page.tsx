@@ -1108,7 +1108,8 @@ export default function GamifiedDashboard() {
       return
     }
 
-    const newCompleted = true // 只能标记为完成，不能取消
+    // 只能标记为完成，不能取消
+    const newCompleted: boolean = true
     let newGoldCoins = goldCoins
     let newTotalXP = totalXP
     let levelUp = false
@@ -1221,10 +1222,8 @@ export default function GamifiedDashboard() {
       }
     }
 
-    // 更新任务状态（只在状态变化时更新）
-    if (newCompleted !== task.completed) {
-      setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)))
-    }
+    // 更新任务状态（因为任务只能从未完成变为完成，所以这里总是会更新）
+    setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)))
     
     // 如果升级，显示提示
     if (levelUp) {
