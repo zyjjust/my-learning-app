@@ -40,6 +40,9 @@ import {
   Volume2,
   Play,
   Pause,
+  Mic,
+  MicOff,
+  Edit3,
 } from "lucide-react"
 
 // 4年级学习任务池（备用，AI生成失败时使用）
@@ -185,6 +188,12 @@ export default function GamifiedDashboard() {
   const [isGeneratingStory, setIsGeneratingStory] = useState(false)
   const [currentStory, setCurrentStory] = useState<string | null>(null)
   const [isPlayingStory, setIsPlayingStory] = useState(false)
+  
+  // 语音输入相关状态
+  const [isListening, setIsListening] = useState(false)
+  const [storyPrompt, setStoryPrompt] = useState("")
+  const [showStoryInput, setShowStoryInput] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   // 加载用户数据
   useEffect(() => {
@@ -1111,8 +1120,84 @@ export default function GamifiedDashboard() {
     }
   }
 
+  // 开始语音输入
+  const startListening = () => {
+    if (typeof window === 'undefined') return
+    
+    // 检查浏览器是否支持语音识别
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    
+    if (!SpeechRecognition) {
+      alert("您的浏览器不支持语音识别功能，请使用 Chrome 或 Edge 浏览器")
+      return
+    }
+    
+    // 创建语音识别实例
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'zh-CN'
+    recognition.continuous = true
+    recognition.interimResults = true
+    
+    recognition.onstart = () => {
+      setIsListening(true)
+    }
+    
+    recognition.onresult = (event: any) => {
+      let finalTranscript = ''
+      let interimTranscript = ''
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+      
+      if (finalTranscript) {
+        setStoryPrompt(prev => prev + finalTranscript)
+      }
+    }
+    
+    recognition.onerror = (event: any) => {
+      console.error("语音识别错误:", event.error)
+      setIsListening(false)
+      if (event.error === 'no-speech') {
+        // 静默处理无语音错误
+      } else if (event.error === 'not-allowed') {
+        alert("请允许麦克风权限以使用语音输入功能")
+      }
+    }
+    
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+    
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+  
+  // 停止语音输入
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+    }
+    setIsListening(false)
+  }
+  
+  // 切换语音输入状态
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening()
+    } else {
+      startListening()
+    }
+  }
+
   // 生成并播放故事（使用浏览器内置的 Web Speech API）
-  const generateAndPlayStory = async () => {
+  const generateAndPlayStory = async (customPrompt?: string) => {
     if (isGeneratingStory || isPlayingStory) return
 
     setIsGeneratingStory(true)
@@ -1126,11 +1211,13 @@ export default function GamifiedDashboard() {
 
     try {
       // 第一步：生成故事
+      const promptToUse = customPrompt || storyPrompt || ""
       const storyResponse = await fetch("/api/ai/story", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ prompt: promptToUse }),
       })
 
       if (!storyResponse.ok) {
@@ -1961,10 +2048,18 @@ export default function GamifiedDashboard() {
                     <h3 className="text-lg font-medium text-gray-900">AI 学习助手</h3>
                   </div>
                   <div className="flex items-center gap-2">
-                  <Button
-                      onClick={isPlayingStory ? stopStory : generateAndPlayStory}
+                    <Button
+                      onClick={() => setShowStoryInput(!showStoryInput)}
+                      size="sm"
+                      className="rounded-md bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+                    >
+                      <Edit3 className="mr-1.5 h-3 w-3" />
+                      定制故事
+                    </Button>
+                    <Button
+                      onClick={() => isPlayingStory ? stopStory() : generateAndPlayStory()}
                       disabled={isGeneratingStory}
-                    size="sm"
+                      size="sm"
                       className="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isGeneratingStory ? (
@@ -1983,10 +2078,102 @@ export default function GamifiedDashboard() {
                           讲故事
                         </>
                       )}
-                  </Button>
+                    </Button>
                     <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 border border-green-200">在线</span>
                   </div>
                 </div>
+
+                {/* 语音输入故事提示区域 */}
+                {showStoryInput && (
+                  <div className="mb-4 rounded-lg bg-orange-50 p-4 border border-orange-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Mic className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm font-medium text-orange-900">定制你的故事</span>
+                      </div>
+                      <Button
+                        onClick={() => setShowStoryInput(false)}
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-3">说出或输入你想听的故事类型和大纲，例如："讲一个关于太空探险的故事，主角是一只勇敢的小猫"</p>
+                    
+                    <div className="flex gap-2 mb-3">
+                      <textarea
+                        value={storyPrompt}
+                        onChange={(e) => setStoryPrompt(e.target.value)}
+                        placeholder="输入故事类型和大纲..."
+                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                        rows={2}
+                      />
+                      <Button
+                        onClick={toggleListening}
+                        size="sm"
+                        className={`rounded-lg px-3 py-2 ${
+                          isListening 
+                            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                            : 'bg-blue-500 hover:bg-blue-600'
+                        } text-white transition-colors`}
+                      >
+                        {isListening ? (
+                          <MicOff className="h-5 w-5" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {isListening && (
+                      <div className="flex items-center gap-2 mb-3 text-sm text-red-600">
+                        <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                        正在聆听...请说话
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setStoryPrompt("")
+                          stopListening()
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                      >
+                        清空
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (storyPrompt.trim()) {
+                            generateAndPlayStory(storyPrompt)
+                            setShowStoryInput(false)
+                          } else {
+                            alert("请先输入或说出你想听的故事内容")
+                          }
+                        }}
+                        disabled={isGeneratingStory || !storyPrompt.trim()}
+                        size="sm"
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs"
+                      >
+                        {isGeneratingStory ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                            生成中...
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="mr-1.5 h-3 w-3" />
+                            开始讲故事
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* 当前故事显示 */}
                 {currentStory && (
@@ -2195,7 +2382,15 @@ export default function GamifiedDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={isPlayingStory ? stopStory : generateAndPlayStory}
+                    onClick={() => setShowStoryInput(!showStoryInput)}
+                    size="sm"
+                    className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+                  >
+                    <Edit3 className="mr-1.5 h-3 w-3" />
+                    定制
+                  </Button>
+                  <Button
+                    onClick={() => isPlayingStory ? stopStory() : generateAndPlayStory()}
                     disabled={isGeneratingStory}
                     size="sm"
                     className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -2218,20 +2413,112 @@ export default function GamifiedDashboard() {
                     )}
                   </Button>
                   <span className="text-xs text-green-600 font-medium">在线</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowAITutor(false)
-                    setChatMessages([])
-                    setChatInput("")
-                  }}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setShowAITutor(false)
+                      setChatMessages([])
+                      setChatInput("")
+                    }}
                     className="h-8 w-8 text-gray-600 hover:bg-gray-100"
-                >
+                  >
                     <X className="h-5 w-5" />
-                </Button>
+                  </Button>
                 </div>
               </div>
+
+              {/* 语音输入故事提示区域（弹窗版） */}
+              {showStoryInput && (
+                <div className="mb-4 rounded-lg bg-orange-50 p-4 border border-orange-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Mic className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-900">定制你的故事</span>
+                    </div>
+                    <Button
+                      onClick={() => setShowStoryInput(false)}
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-3">说出或输入你想听的故事类型和大纲</p>
+                  
+                  <div className="flex gap-2 mb-3">
+                    <textarea
+                      value={storyPrompt}
+                      onChange={(e) => setStoryPrompt(e.target.value)}
+                      placeholder="例如：讲一个关于太空探险的故事，主角是一只勇敢的小猫"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                      rows={2}
+                    />
+                    <Button
+                      onClick={toggleListening}
+                      size="sm"
+                      className={`rounded-lg px-3 py-2 ${
+                        isListening 
+                          ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                          : 'bg-blue-500 hover:bg-blue-600'
+                      } text-white transition-colors`}
+                    >
+                      {isListening ? (
+                        <MicOff className="h-5 w-5" />
+                      ) : (
+                        <Mic className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {isListening && (
+                    <div className="flex items-center gap-2 mb-3 text-sm text-red-600">
+                      <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                      正在聆听...请说话
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setStoryPrompt("")
+                        stopListening()
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                    >
+                      清空
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (storyPrompt.trim()) {
+                          generateAndPlayStory(storyPrompt)
+                          setShowStoryInput(false)
+                        } else {
+                          alert("请先输入或说出你想听的故事内容")
+                        }
+                      }}
+                      disabled={isGeneratingStory || !storyPrompt.trim()}
+                      size="sm"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs"
+                    >
+                      {isGeneratingStory ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          生成中...
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="mr-1.5 h-3 w-3" />
+                          开始讲故事
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* 当前故事显示 */}
               {currentStory && (

@@ -14,10 +14,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 解析用户输入的故事提示
+    let userInput = ''
+    try {
+      const body = await request.json()
+      userInput = body.prompt || ''
+    } catch {
+      // 如果没有请求体，使用默认提示
+    }
+
     // 生成适合4年级学生的曲折离奇故事
     const systemPrompt = '你是一个专门为小学4年级学生创作故事的AI助手。请创作一个曲折离奇、引人入胜的故事。故事要求：1) 适合4年级学生的认知水平和理解能力 2) 情节曲折有趣，有悬念和转折 3) 主题积极向上，传递正能量 4) 语言生动有趣，容易理解 5) 故事长度控制在300-500字左右 6) 包含冒险、探索、友谊、勇气等元素 7) 用中文创作'
     
-    const userPrompt = '请为我创作一个适合4年级学生的曲折离奇的故事，要求情节引人入胜，有悬念和转折，主题积极向上。'
+    // 根据用户输入构建提示
+    let userPrompt = ''
+    if (userInput && userInput.trim()) {
+      userPrompt = `请根据以下要求创作一个适合4年级学生的故事：
+
+用户的要求：${userInput}
+
+请创作一个情节引人入胜、有悬念和转折、主题积极向上的故事。`
+    } else {
+      userPrompt = '请为我创作一个适合4年级学生的曲折离奇的故事，要求情节引人入胜，有悬念和转折，主题积极向上。'
+    }
 
     // 构建通义千问 DashScope API 请求体
     const requestBody = {
