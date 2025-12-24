@@ -167,6 +167,7 @@ export default function GamifiedDashboard() {
   const [currentLevelXP, setCurrentLevelXP] = useState(0)
   const [totalXP, setTotalXP] = useState(0) // 累计积分
   const [goldCoins, setGoldCoins] = useState(0)
+  const [isDataLoaded, setIsDataLoaded] = useState(false) // 标记数据是否已从数据库加载
   const [streak, setStreak] = useState(0)
   const [title, setTitle] = useState("学习新星") // 称号
   const [purchasedItems, setPurchasedItems] = useState<number[]>([])
@@ -199,6 +200,15 @@ export default function GamifiedDashboard() {
   useEffect(() => {
     if (user) {
       loadUserData()
+    } else {
+      // 用户登出时重置数据加载状态
+      setIsDataLoaded(false)
+      setTotalXP(0)
+      setGoldCoins(0)
+      setLevel(1)
+      setCurrentLevelXP(0)
+      setStreak(0)
+      console.log("用户登出，重置所有数据状态")
     }
   }, [user])
 
@@ -430,9 +440,19 @@ export default function GamifiedDashboard() {
         // 加载已兑换商品
         await loadPurchasedItems()
         await loadAllPurchasedItems()
+        
+        // 标记数据已加载完成
+        setIsDataLoaded(true)
+        console.log("✅ 用户数据加载完成，isDataLoaded = true")
+      } else {
+        // 没有数据，也标记为已加载（新用户）
+        setIsDataLoaded(true)
+        console.log("✅ 新用户，初始化数据，isDataLoaded = true")
       }
     } catch (error) {
       console.error("Error in loadUserData:", error)
+      // 加载失败也标记为已加载，避免阻塞
+      setIsDataLoaded(true)
     }
   }
 
@@ -739,43 +759,32 @@ export default function GamifiedDashboard() {
 
   // 当数据变化时同步到数据库
   useEffect(() => {
-    // 确保用户已登录且数据已加载（避免初始化时误触发）
-    if (user && user.id) {
-      // 检查是否已经加载过用户数据（通过检查是否有任何数据被设置）
-      // 使用更严格的检查：确保不是初始状态，即使值为0也要同步
-      const hasDataLoaded = 
-        level !== undefined && 
-        totalXP !== undefined && 
-        goldCoins !== undefined &&
-        currentLevelXP !== undefined &&
-        streak !== undefined
+    // 必须确保：1) 用户已登录 2) 数据已从数据库加载完成
+    // 这样可以防止用初始值(0)覆盖数据库中的真实数据
+    if (user && user.id && isDataLoaded) {
+      console.log("检测到数据变化，准备同步到数据库:", {
+        level,
+        totalXP,
+        goldCoins,
+        currentLevelXP,
+        streak,
+        isDataLoaded
+      })
       
-      if (hasDataLoaded) {
-        console.log("检测到数据变化，准备同步到数据库:", {
-          level,
-          totalXP,
-          goldCoins,
-          currentLevelXP,
-          streak
-        })
-        
       const timer = setTimeout(() => {
         syncUserData()
       }, 1000) // 防抖，1秒后同步
 
       return () => clearTimeout(timer)
-      } else {
-        console.log("数据尚未完全加载，跳过同步:", {
-          level,
-          totalXP,
-          goldCoins,
-          currentLevelXP,
-          streak,
-          hasDataLoaded
-        })
-      }
+    } else if (user && user.id && !isDataLoaded) {
+      console.log("数据尚未从数据库加载，跳过同步:", {
+        level,
+        totalXP,
+        goldCoins,
+        isDataLoaded
+      })
     }
-  }, [user, level, currentLevelXP, totalXP, goldCoins, streak, avatarUrl])
+  }, [user, level, currentLevelXP, totalXP, goldCoins, streak, avatarUrl, isDataLoaded])
 
   // 在组件卸载或用户登出前保存数据
   useEffect(() => {
