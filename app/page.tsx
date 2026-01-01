@@ -19,7 +19,6 @@ import {
   Gamepad2,
   BookOpen,
   IceCream,
-  Flame,
   Coins,
   MessageCircle,
   User,
@@ -104,6 +103,7 @@ function generateFixedTasks(): Task[] {
 // 调用通义千问AI生成3个任务
 async function generateAITasks(): Promise<Task[]> {
   try {
+    // 不传递固定的prompt，让后端API生成随机的任务请求
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: {
@@ -111,7 +111,8 @@ async function generateAITasks(): Promise<Task[]> {
       },
       body: JSON.stringify({
         type: "generate-tasks",
-        prompt: "请生成3个适合4年级学生的今日学习任务，要求多样化，涵盖不同学科。",
+        // 传递时间戳作为额外的随机性来源
+        timestamp: Date.now(),
       }),
     })
 
@@ -557,7 +558,7 @@ export default function GamifiedDashboard() {
     }, 800) // 开箱动画延迟
   }
 
-  // 更新连续登录天数
+  // 更新累计登录天数（每天登录+1，不管是否连续）
   const updateLoginStreak = async (lastLoginDate: string | null, currentStreak: number) => {
     if (!user) return
 
@@ -575,25 +576,8 @@ export default function GamifiedDashboard() {
       // 但如果当前天数是0或null，说明是首次登录，应该设置为1
       newStreak = streakValue > 0 ? streakValue : 1
     } else {
-      // 计算日期差
-      const lastDate = new Date(lastLoginDate + 'T00:00:00')
-      const todayDate = new Date(today + 'T00:00:00')
-      const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
-      
-      if (daysDiff === 1) {
-        // 昨天登录，今天继续，累加
-        // 如果之前的天数是0，说明是首次连续登录，应该设置为1
-        newStreak = streakValue > 0 ? streakValue + 1 : 1
-      } else if (daysDiff > 1) {
-      // 中断了，重置为1
-      newStreak = 1
-      } else if (daysDiff === 0) {
-        // 同一天，保持原值（但如果为0则设为1）
-        newStreak = streakValue > 0 ? streakValue : 1
-      } else {
-        // 未来日期（不应该发生），保持原值或设为1
-        newStreak = streakValue > 0 ? streakValue : 1
-      }
+      // 不是今天登录的，说明是新的一天，累计天数+1
+      newStreak = streakValue + 1
     }
 
     setStreak(newStreak)
@@ -609,9 +593,9 @@ export default function GamifiedDashboard() {
       .eq("id", user.id)
       
       if (error) {
-        console.error("Error updating login streak:", error)
+        console.error("Error updating login days:", error)
       } else {
-        console.log(`连续登录天数已更新: ${newStreak}天`)
+        console.log(`累计登录天数已更新: ${newStreak}天`)
       }
     }
   }
@@ -910,29 +894,65 @@ export default function GamifiedDashboard() {
     }
   }
 
-  // 刷新任务函数：重新生成AI任务，固定任务保持不变
+  // 获取AI任务（id >= 3 的任务）
+  const getAITasks = () => tasks.filter((t) => t.id >= 3)
+  
+  // 检查是否所有AI任务都已完成
+  const allAITasksCompleted = () => {
+    const aiTasks = getAITasks()
+    return aiTasks.length > 0 && aiTasks.every((t) => t.completed)
+  }
+  
+  // 获取未完成的AI任务数量
+  const getUncompletedAITasksCount = () => {
+    return getAITasks().filter((t) => !t.completed).length
+  }
+
+  // 刷新任务函数：只刷新未完成的AI任务，固定任务和已完成的AI任务保持不变
   const refreshTasks = async () => {
+    // 如果所有AI任务都已完成，不允许刷新
+    if (allAITasksCompleted()) {
+      return
+    }
+    
     setIsGeneratingTasks(true)
     try {
-      // 保持2个固定任务不变
-      const fixedTasks = generateFixedTasks()
-      // 重新调用通义千问API生成3个新任务
-      const aiTasks = await generateAITasks()
-      const newTasks = [...fixedTasks, ...aiTasks]
-      // 保留已完成的任务状态
-      const updatedTasks = newTasks.map((newTask) => {
-        const existingTask = tasks.find((t) => t.text === newTask.text)
-        return existingTask ? { ...newTask, completed: existingTask.completed } : newTask
+      // 获取当前未完成的AI任务数量
+      const uncompletedCount = getUncompletedAITasksCount()
+      
+      // 保持固定任务和已完成的AI任务不变
+      const fixedTasks = tasks.filter((t) => t.id <= 2)
+      const completedAITasks = tasks.filter((t) => t.id >= 3 && t.completed)
+      
+      // 只生成需要的数量的新AI任务
+      const newAITasks = await generateAITasks()
+      // 取出需要的数量，并重新分配ID
+      const neededNewTasks = newAITasks.slice(0, uncompletedCount).map((task, index) => {
+        // 找到未被使用的ID（排除已完成任务的ID）
+        const usedIds = completedAITasks.map((t) => t.id)
+        let newId = 3
+        while (usedIds.includes(newId) || index > 0 && newId <= 2 + index) {
+          newId++
+        }
+        // 简单方式：按顺序分配ID 3, 4, 5，跳过已完成任务的ID
+        const availableIds = [3, 4, 5].filter((id) => !usedIds.includes(id))
+        return {
+          ...task,
+          id: availableIds[index] || 3 + index,
+        }
       })
+      
+      // 组合所有任务
+      const updatedTasks = [...fixedTasks, ...completedAITasks, ...neededNewTasks]
+      // 按ID排序
+      updatedTasks.sort((a, b) => a.id - b.id)
+      
       setTasks(updatedTasks)
       
-      // 更新任务生成日期
+      // 保存到localStorage
       if (user) {
         const today = new Date().toISOString().split('T')[0]
-        await supabase
-          .from("users")
-          .update({ last_tasks_date: today })
-          .eq("id", user.id)
+        localStorage.setItem(`tasks_${user.id}_${today}`, JSON.stringify(updatedTasks))
       }
     } catch (error) {
       console.error("Error refreshing tasks:", error)
@@ -1716,17 +1736,17 @@ export default function GamifiedDashboard() {
             </CardContent>
           </Card>
 
-          {/* 连续登录卡片 - Material Design */}
+          {/* 累计登录卡片 - Material Design */}
           <Card className="material-card bg-white border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-full bg-orange-100 p-2.5">
-                  <Flame className="h-5 w-5 text-orange-600" />
-                      </div>
+                <div className="rounded-full bg-blue-100 p-2.5">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">连续登录</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">累计登录</p>
                   <p className="text-2xl font-semibold text-gray-900">{streak}天</p>
-                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1827,35 +1847,42 @@ export default function GamifiedDashboard() {
                     className="hidden"
                   />
                 </div>
-            <div className="relative group">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors"
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                </div>
-                <Button
-              variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-              className="text-gray-600 hover:text-gray-800"
+            {/* 用户信息区域 */}
+            <div className="flex items-center gap-2">
+              <div className="relative group">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                      <User className="h-5 w-5 text-gray-400" />
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </div>
+              {/* 用户名称 */}
+              <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate">
+                {user?.name || user?.username || "用户"}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
                 </div>
               </div>
 
@@ -1951,24 +1978,33 @@ export default function GamifiedDashboard() {
             </div>
 
             {/* 刷新AI任务按钮 - Material Design */}
-                  <Button
+            <Button
               onClick={refreshTasks}
-                    variant="outline"
-              className="mt-4 w-full border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400 font-medium rounded-lg shadow-sm"
-              disabled={isGeneratingTasks}
-                        >
+              variant="outline"
+              className={`mt-4 w-full font-medium rounded-lg shadow-sm ${
+                allAITasksCompleted() 
+                  ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed" 
+                  : "border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400"
+              }`}
+              disabled={isGeneratingTasks || allAITasksCompleted()}
+            >
               {isGeneratingTasks ? (
-                            <>
+                <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   生成中...
-                            </>
-                          ) : (
-                            <>
+                </>
+              ) : allAITasksCompleted() ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  今日 AI 任务已全部完成
+                </>
+              ) : (
+                <>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  刷新 AI 任务
-                            </>
-                          )}
-                        </Button>
+                  刷新未完成的 AI 任务 ({getUncompletedAITasksCount()})
+                </>
+              )}
+            </Button>
 
                       </div>
 

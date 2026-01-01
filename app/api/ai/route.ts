@@ -20,9 +20,14 @@ export async function POST(request: NextRequest) {
     let userPrompt = ''
 
     if (type === 'generate-tasks') {
-      // 生成任务
-      systemPrompt = '你是一个专门为4年级学生设计学习任务的AI助手。请根据要求生成3个适合4年级学生的学习任务。每个任务应该：1) 适合4年级学生的认知水平 2) 有明确的完成标准 3) 包含学科类型（数学、语文、英语、科学、美术、音乐等）4) 任务描述简洁明了（不超过30字）。请以JSON格式返回，格式为：[{"text": "任务描述", "coins": 金币数(10-16), "difficulty": "简单/中等/困难"}]'
-      userPrompt = prompt || '请生成3个适合4年级学生的今日学习任务，要求多样化，涵盖不同学科。'
+      // 生成任务 - 添加随机性确保每次生成不同的任务
+      const subjects = ['数学', '语文', '英语', '科学', '美术', '音乐', '体育', '阅读', '写作', '历史', '地理']
+      const shuffledSubjects = subjects.sort(() => Math.random() - 0.5).slice(0, 3)
+      const randomSeed = Math.floor(Math.random() * 10000)
+      const timeHint = new Date().toLocaleTimeString('zh-CN')
+      
+      systemPrompt = '你是一个专门为4年级学生设计学习任务的AI助手。请根据要求生成3个适合4年级学生的学习任务。每个任务应该：1) 适合4年级学生的认知水平 2) 有明确的完成标准 3) 包含学科类型 4) 任务描述简洁明了（不超过30字）5) 每次生成的任务必须与之前不同，要有创意和变化。请以JSON格式返回，格式为：[{"text": "任务描述", "coins": 金币数(10-16), "difficulty": "简单/中等/困难"}]'
+      userPrompt = prompt || `请生成3个全新的适合4年级学生的学习任务。要求：1) 任务要有创意，不要重复常见的任务 2) 本次重点关注这些学科：${shuffledSubjects.join('、')} 3) 随机种子：${randomSeed}，时间：${timeHint}。请生成与以往完全不同的新任务。`
     } else if (type === 'chat') {
       // AI导师对话
       systemPrompt = '你是一个专门为4年级学生提供学习辅导的AI导师。你的特点是：1) 语言亲切友好，像朋友一样 2) 用简单易懂的方式解释复杂概念 3) 鼓励学生，给予正面反馈 4) 根据4年级学生的认知水平调整回答难度 5) 可以辅导数学、语文、英语、科学等各科目。请用中文回答。'
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: type === 'generate-tasks' ? 0.8 : 0.7,
+        temperature: type === 'generate-tasks' ? 0.95 : 0.7,
         max_tokens: type === 'generate-tasks' ? 500 : 1000,
       }
     }
