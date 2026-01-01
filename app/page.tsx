@@ -43,6 +43,8 @@ import {
   MicOff,
   Edit3,
 } from "lucide-react"
+import { PetCompanion } from "@/components/PetCompanion"
+import { JourneyMap } from "@/components/JourneyMap"
 
 // 4年级学习任务池（备用，AI生成失败时使用）
 const grade4TaskPool = [
@@ -185,12 +187,12 @@ export default function GamifiedDashboard() {
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([])
   const [chatInput, setChatInput] = useState("")
   const [isChatting, setIsChatting] = useState(false)
-  
+
   // 语音讲故事相关状态
   const [isGeneratingStory, setIsGeneratingStory] = useState(false)
   const [currentStory, setCurrentStory] = useState<string | null>(null)
   const [isPlayingStory, setIsPlayingStory] = useState(false)
-  
+
   // 语音输入相关状态
   const [isListening, setIsListening] = useState(false)
   const [storyPrompt, setStoryPrompt] = useState("")
@@ -266,10 +268,10 @@ export default function GamifiedDashboard() {
   const calculateLevelAndTitle = (totalXP: number) => {
     // 等级计算公式：每100积分升一级
     const calculatedLevel = Math.floor(totalXP / 100) + 1
-    
+
     // 当前等级的积分进度（0-100）
     const currentXP = totalXP % 100
-    
+
     // 根据等级计算称号
     let calculatedTitle = "学习新星"
     if (calculatedLevel >= 20) {
@@ -281,7 +283,7 @@ export default function GamifiedDashboard() {
     } else if (calculatedLevel >= 5) {
       calculatedTitle = "进步之星"
     }
-    
+
     return { level: calculatedLevel, title: calculatedTitle, currentXP }
   }
 
@@ -292,10 +294,10 @@ export default function GamifiedDashboard() {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
-      
+
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
-      
+
       if (soundType === 'complete') {
         // 完成任务音效：叮咚声
         oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
@@ -337,7 +339,7 @@ export default function GamifiedDashboard() {
       return Math.random() * (max - min) + min
     }
 
-    const interval: any = setInterval(function() {
+    const interval: any = setInterval(function () {
       const timeLeft = animationEnd - Date.now()
 
       if (timeLeft <= 0) {
@@ -345,7 +347,7 @@ export default function GamifiedDashboard() {
       }
 
       const particleCount = 50 * (timeLeft / duration)
-      
+
       confetti({
         ...defaults,
         origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 },
@@ -375,7 +377,7 @@ export default function GamifiedDashboard() {
         // 确保total_xp是数字类型，防止字符串拼接问题
         const totalXPValue = typeof data.total_xp === 'number' ? data.total_xp : parseInt(String(data.total_xp || 0), 10) || 0
         const goldCoinsValue = typeof data.gold_coins === 'number' ? data.gold_coins : parseInt(String(data.gold_coins || 0), 10) || 0
-        
+
         setTotalXP(totalXPValue)
         console.log("✅ 从数据库加载用户数据:", {
           total_xp: totalXPValue,
@@ -389,7 +391,7 @@ export default function GamifiedDashboard() {
           streak: data.streak,
           user_id: user.id
         })
-        
+
         // 数据一致性检查：如果金币大于累计积分，说明数据不一致
         // 这种情况可能发生在历史数据迁移或数据修复时
         if (goldCoinsValue > totalXPValue && totalXPValue > 0) {
@@ -403,7 +405,7 @@ export default function GamifiedDashboard() {
           // 但考虑到用户可能已经兑换过商品，我们只记录警告，不自动修复
           console.warn("⚠️ 建议：如果用户没有兑换过商品，金币应该等于累计积分。如果兑换过商品，金币应该小于累计积分。")
         }
-        
+
         // 如果数据库中的total_xp为null或undefined，初始化为0并保存
         if (data.total_xp === null || data.total_xp === undefined) {
           console.warn("⚠️ 数据库中的total_xp为null/undefined，初始化为0并保存")
@@ -413,13 +415,13 @@ export default function GamifiedDashboard() {
             syncUserData()
           }, 500)
         }
-        
+
         // 根据累计积分计算等级和称号
         const { level: calculatedLevel, title: calculatedTitle, currentXP } = calculateLevelAndTitle(totalXPValue)
         setLevel(calculatedLevel)
         setCurrentLevelXP(currentXP)
         setTitle(calculatedTitle)
-        
+
         // 确保gold_coins是数字类型（已在上面设置）
         setGoldCoins(goldCoinsValue)
         console.log("从数据库加载金币:", goldCoinsValue, "类型:", typeof goldCoinsValue)
@@ -441,7 +443,7 @@ export default function GamifiedDashboard() {
         // 加载已兑换商品
         await loadPurchasedItems()
         await loadAllPurchasedItems()
-        
+
         // 标记数据已加载完成
         setIsDataLoaded(true)
         console.log("✅ 用户数据加载完成，isDataLoaded = true")
@@ -467,7 +469,7 @@ export default function GamifiedDashboard() {
 
     const today = new Date().toISOString().split('T')[0]
     const lastDate = new Date(lastChestDate).toISOString().split('T')[0]
-    
+
     // 如果上次开启日期不是今天，则可以开启
     setCanOpenChest(today !== lastDate)
   }
@@ -492,7 +494,7 @@ export default function GamifiedDashboard() {
         const currentTotalXP = typeof totalXP === 'number' ? totalXP : parseInt(String(totalXP || 0), 10)
         const currentGoldCoins = typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10)
         const rewardValue = typeof reward === 'number' ? reward : parseInt(String(reward || 0), 10)
-        
+
         const newTotalXP = currentTotalXP + rewardValue
         const newGoldCoins = currentGoldCoins + rewardValue
 
@@ -505,7 +507,7 @@ export default function GamifiedDashboard() {
           level: typeof levelData.level === 'number' ? levelData.level : parseInt(String(levelData.level || 1), 10),
           current_xp: typeof levelData.currentXP === 'number' ? levelData.currentXP : parseInt(String(levelData.currentXP || 0), 10),
         }
-        
+
         const { error, data: updateResult } = await supabase
           .from("users")
           .update(updateData)
@@ -518,7 +520,7 @@ export default function GamifiedDashboard() {
           setIsOpeningChest(false)
           return
         }
-        
+
         // 验证数据是否成功保存
         if (updateResult && updateResult.length > 0) {
           console.log("宝箱奖励已成功保存到数据库:", {
@@ -531,7 +533,7 @@ export default function GamifiedDashboard() {
         setTotalXP(newTotalXP)
         setGoldCoins(newGoldCoins)
         setCanOpenChest(false)
-        
+
         const { level: newLevel, title: newTitle, currentXP: newCurrentXP } = calculateLevelAndTitle(newTotalXP)
         setLevel(newLevel)
         setCurrentLevelXP(newCurrentXP)
@@ -539,7 +541,7 @@ export default function GamifiedDashboard() {
 
         // 显示奖励
         setShowChestReward({ reward })
-        
+
         // 触发五彩纸屑特效
         triggerConfetti()
 
@@ -585,13 +587,13 @@ export default function GamifiedDashboard() {
     // 更新数据库（只在日期变化时更新，或者首次登录时）
     if (!lastLoginDate || lastLoginDate !== today) {
       const { error } = await supabase
-      .from("users")
-      .update({
-        streak: newStreak,
-        last_login_date: today,
-      })
-      .eq("id", user.id)
-      
+        .from("users")
+        .update({
+          streak: newStreak,
+          last_login_date: today,
+        })
+        .eq("id", user.id)
+
       if (error) {
         console.error("Error updating login days:", error)
       } else {
@@ -681,12 +683,12 @@ export default function GamifiedDashboard() {
         gold_coins: typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10),
         streak: typeof streak === 'number' ? streak : parseInt(String(streak || 0), 10),
         avatar_url: avatarUrl || null,
-          updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
-      
+
       console.log("准备同步用户数据到数据库:", updateData)
       console.log("用户ID:", user.id)
-      
+
       const { error, data } = await supabase
         .from("users")
         .update(updateData)
@@ -708,7 +710,7 @@ export default function GamifiedDashboard() {
           current_xp: savedData.current_xp,
           user_id: user.id
         })
-        
+
         // 验证保存的数据
         if (savedData.total_xp !== updateData.total_xp) {
           console.warn("⚠️ 同步的积分与预期不一致:", {
@@ -717,21 +719,21 @@ export default function GamifiedDashboard() {
             预期类型: typeof updateData.total_xp,
             实际类型: typeof savedData.total_xp
           })
-      } else {
+        } else {
           console.log("✅ 积分验证通过，数据已正确保存")
         }
-        
+
         // 更新本地用户信息
         if (setUser) {
-        setUser({
-          ...user,
+          setUser({
+            ...user,
             level: updateData.level,
             current_xp: updateData.current_xp,
             gold_coins: updateData.gold_coins,
             streak: updateData.streak,
-          avatar_url: avatarUrl || undefined,
-        })
-      }
+            avatar_url: avatarUrl || undefined,
+          })
+        }
       } else {
         console.warn("⚠️ 数据库更新成功但没有返回数据，可能用户不存在")
       }
@@ -754,7 +756,7 @@ export default function GamifiedDashboard() {
         streak,
         isDataLoaded
       })
-      
+
       const timer = setTimeout(() => {
         syncUserData()
       }, 1000) // 防抖，1秒后同步
@@ -862,13 +864,13 @@ export default function GamifiedDashboard() {
       const aiTasks = await generateAITasks()
       // 组合任务：固定任务在前，AI任务在后
       const allTasks = [...fixedTasks, ...aiTasks]
-      
+
       // 先保存任务到localStorage（用于恢复状态）
       const today = new Date().toISOString().split('T')[0]
       if (user) {
         localStorage.setItem(`tasks_${user.id}_${today}`, JSON.stringify(allTasks))
       }
-      
+
       // 设置任务状态（在保存localStorage之后）
       setTasks(allTasks)
 
@@ -879,7 +881,7 @@ export default function GamifiedDashboard() {
           .from("users")
           .update({ last_tasks_date: today })
           .eq("id", user.id)
-        
+
         if (updateResult.error) {
           console.error("Error updating last_tasks_date:", updateResult.error)
         }
@@ -896,13 +898,13 @@ export default function GamifiedDashboard() {
 
   // 获取AI任务（id >= 3 的任务）
   const getAITasks = () => tasks.filter((t) => t.id >= 3)
-  
+
   // 检查是否所有AI任务都已完成
   const allAITasksCompleted = () => {
     const aiTasks = getAITasks()
     return aiTasks.length > 0 && aiTasks.every((t) => t.completed)
   }
-  
+
   // 获取未完成的AI任务数量
   const getUncompletedAITasksCount = () => {
     return getAITasks().filter((t) => !t.completed).length
@@ -914,16 +916,16 @@ export default function GamifiedDashboard() {
     if (allAITasksCompleted()) {
       return
     }
-    
+
     setIsGeneratingTasks(true)
     try {
       // 获取当前未完成的AI任务数量
       const uncompletedCount = getUncompletedAITasksCount()
-      
+
       // 保持固定任务和已完成的AI任务不变
       const fixedTasks = tasks.filter((t) => t.id <= 2)
       const completedAITasks = tasks.filter((t) => t.id >= 3 && t.completed)
-      
+
       // 只生成需要的数量的新AI任务
       const newAITasks = await generateAITasks()
       // 取出需要的数量，并重新分配ID
@@ -941,14 +943,14 @@ export default function GamifiedDashboard() {
           id: availableIds[index] || 3 + index,
         }
       })
-      
+
       // 组合所有任务
       const updatedTasks = [...fixedTasks, ...completedAITasks, ...neededNewTasks]
       // 按ID排序
       updatedTasks.sort((a, b) => a.id - b.id)
-      
+
       setTasks(updatedTasks)
-      
+
       // 保存到localStorage
       if (user) {
         const today = new Date().toISOString().split('T')[0]
@@ -1059,16 +1061,16 @@ export default function GamifiedDashboard() {
       if (user) {
         try {
           const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg'
-        const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
-        const filePath = `backgrounds/${fileName}`
+          const fileName = `bg-${user.id}-${Date.now()}.${fileExt}`
+          const filePath = `backgrounds/${fileName}`
 
           // 尝试上传到 Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("backgrounds")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          })
+            .from("backgrounds")
+            .upload(filePath, file, {
+              cacheControl: "3600",
+              upsert: false,
+            })
 
           if (!uploadError && uploadData) {
             // 上传成功，获取公共 URL
@@ -1088,24 +1090,24 @@ export default function GamifiedDashboard() {
       // 如果 Storage 上传失败或未登录，使用 base64
       if (!imageUrl) {
         imageUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const result = reader.result as string
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const result = reader.result as string
             resolve(result)
-        }
+          }
           reader.onerror = reject
-        reader.readAsDataURL(file)
+          reader.readAsDataURL(file)
         })
         console.log("使用 base64 格式保存背景图")
       }
 
       // 更新状态和本地存储
       if (imageUrl) {
-      setBackgroundImageUrl(imageUrl)
-      localStorage.setItem('backgroundImageUrl', imageUrl)
-      
+        setBackgroundImageUrl(imageUrl)
+        localStorage.setItem('backgroundImageUrl', imageUrl)
+
         // 保存到数据库（如果已登录）
-      if (user) {
+        if (user) {
           const saveResult = await saveBackgroundToSupabase(imageUrl)
           if (saveResult) {
             alert("背景图已成功更换！")
@@ -1135,7 +1137,7 @@ export default function GamifiedDashboard() {
         .from("users")
         .update({ background_image_url: imageUrl })
         .eq("id", user.id)
-      
+
       if (error) {
         console.error("Error saving background to database:", error)
         return false
@@ -1152,29 +1154,29 @@ export default function GamifiedDashboard() {
   // 开始语音输入
   const startListening = () => {
     if (typeof window === 'undefined') return
-    
+
     // 检查浏览器是否支持语音识别
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    
+
     if (!SpeechRecognition) {
       alert("您的浏览器不支持语音识别功能，请使用 Chrome 或 Edge 浏览器")
       return
     }
-    
+
     // 创建语音识别实例
     const recognition = new SpeechRecognition()
     recognition.lang = 'zh-CN'
     recognition.continuous = true
     recognition.interimResults = true
-    
+
     recognition.onstart = () => {
       setIsListening(true)
     }
-    
+
     recognition.onresult = (event: any) => {
       let finalTranscript = ''
       let interimTranscript = ''
-      
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript
         if (event.results[i].isFinal) {
@@ -1183,12 +1185,12 @@ export default function GamifiedDashboard() {
           interimTranscript += transcript
         }
       }
-      
+
       if (finalTranscript) {
         setStoryPrompt(prev => prev + finalTranscript)
       }
     }
-    
+
     recognition.onerror = (event: any) => {
       console.error("语音识别错误:", event.error)
       setIsListening(false)
@@ -1198,15 +1200,15 @@ export default function GamifiedDashboard() {
         alert("请允许麦克风权限以使用语音输入功能")
       }
     }
-    
+
     recognition.onend = () => {
       setIsListening(false)
     }
-    
+
     recognitionRef.current = recognition
     recognition.start()
   }
-  
+
   // 停止语音输入
   const stopListening = () => {
     if (recognitionRef.current) {
@@ -1215,7 +1217,7 @@ export default function GamifiedDashboard() {
     }
     setIsListening(false)
   }
-  
+
   // 切换语音输入状态
   const toggleListening = () => {
     if (isListening) {
@@ -1231,7 +1233,7 @@ export default function GamifiedDashboard() {
 
     setIsGeneratingStory(true)
     setCurrentStory(null)
-    
+
     // 停止当前播放的语音
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel()
@@ -1255,7 +1257,7 @@ export default function GamifiedDashboard() {
       }
 
       const storyData = await storyResponse.json()
-      
+
       if (storyData.error) {
         throw new Error(storyData.error)
       }
@@ -1266,38 +1268,38 @@ export default function GamifiedDashboard() {
       // 第二步：使用浏览器内置的 Web Speech API 朗读故事
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(story)
-        
+
         // 设置中文语音
         utterance.lang = 'zh-CN'
         utterance.rate = 0.9 // 语速稍慢，适合小学生听
         utterance.pitch = 1.1 // 音调稍高，更适合儿童故事
-        
+
         // 尝试找到中文女声
         const voices = window.speechSynthesis.getVoices()
-        const chineseVoice = voices.find(voice => 
+        const chineseVoice = voices.find(voice =>
           voice.lang.includes('zh') && voice.name.toLowerCase().includes('female')
-        ) || voices.find(voice => 
+        ) || voices.find(voice =>
           voice.lang.includes('zh')
         )
-        
+
         if (chineseVoice) {
           utterance.voice = chineseVoice
         }
-        
+
         utterance.onstart = () => {
           setIsPlayingStory(true)
         }
-        
+
         utterance.onend = () => {
           setIsPlayingStory(false)
         }
-        
+
         utterance.onerror = (event) => {
           console.error("Speech synthesis error:", event)
           setIsPlayingStory(false)
           // 不显示错误提示，因为语音可能只是被用户停止了
         }
-        
+
         // 开始朗读
         window.speechSynthesis.speak(utterance)
         setIsPlayingStory(true)
@@ -1340,7 +1342,7 @@ export default function GamifiedDashboard() {
 
     const userMessage = chatInput.trim()
     const newUserMessage = { role: "user" as const, content: userMessage }
-    
+
     // 先更新UI，显示用户消息
     setChatMessages((prev) => [...prev, newUserMessage])
     setChatInput("")
@@ -1349,7 +1351,7 @@ export default function GamifiedDashboard() {
     try {
       // 使用最新的消息列表（包含刚添加的用户消息）
       const currentMessages = [...chatMessages, newUserMessage]
-      
+
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: {
@@ -1367,19 +1369,19 @@ export default function GamifiedDashboard() {
       }
 
       const data = await response.json()
-      
+
       if (data.error) {
         throw new Error(data.error)
       }
-      
-      setChatMessages((prev) => [...prev, { 
-        role: "assistant", 
-        content: data.content || "抱歉，我暂时无法回答这个问题。" 
+
+      setChatMessages((prev) => [...prev, {
+        role: "assistant",
+        content: data.content || "抱歉，我暂时无法回答这个问题。"
       }])
     } catch (error: any) {
       console.error("Error sending chat message:", error)
       let errorMessage = "抱歉，发生了错误。"
-      
+
       if (error.message) {
         if (error.message.includes("DashScope API key")) {
           errorMessage = "AI API 未配置。请在环境变量中设置 DASHSCOPE_API_KEY。"
@@ -1389,7 +1391,7 @@ export default function GamifiedDashboard() {
           errorMessage = `错误：${error.message}`
         }
       }
-      
+
       setChatMessages((prev) => [
         ...prev,
         { role: "assistant", content: errorMessage },
@@ -1402,7 +1404,7 @@ export default function GamifiedDashboard() {
   const [showShop, setShowShop] = useState(false)
   const [showAITutor, setShowAITutor] = useState(false)
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<{ itemId: number; itemName: string; cost: number } | null>(null)
-  
+
   // 每日宝箱相关状态
   const [canOpenChest, setCanOpenChest] = useState(false)
   const [isOpeningChest, setIsOpeningChest] = useState(false)
@@ -1438,20 +1440,20 @@ export default function GamifiedDashboard() {
     const taskCoins = typeof task.coins === 'number' ? task.coins : parseInt(String(task.coins || 0), 10)
     const currentTotalXP = typeof totalXP === 'number' ? totalXP : parseInt(String(totalXP || 0), 10)
     const currentGoldCoins = typeof goldCoins === 'number' ? goldCoins : parseInt(String(goldCoins || 0), 10)
-    
+
     newGoldCoins = currentGoldCoins + taskCoins
     newTotalXP = currentTotalXP + taskCoins // 累计积分不设上限，可以无限累加
-    
+
     // 检查是否升级
     const oldLevel = Math.floor(currentTotalXP / 100) + 1
     const newLevel = Math.floor(newTotalXP / 100) + 1
     levelUp = newLevel > oldLevel
-    
+
     // 播放音效和特效
     playSound('complete')
     playSound('coin')
     triggerConfetti()
-    
+
     // 如果升级，播放升级音效和特效
     if (levelUp) {
       setTimeout(() => {
@@ -1464,7 +1466,7 @@ export default function GamifiedDashboard() {
     if (newGoldCoins !== goldCoins || newTotalXP !== totalXP) {
       setGoldCoins(newGoldCoins)
       setTotalXP(newTotalXP)
-      
+
       // 重新计算等级和称号
       const levelData = calculateLevelAndTitle(newTotalXP)
       calculatedLevel = levelData.level
@@ -1472,7 +1474,7 @@ export default function GamifiedDashboard() {
       setLevel(calculatedLevel)
       setCurrentLevelXP(levelData.currentXP)
       setTitle(calculatedTitle)
-      
+
       // 立即同步到数据库
       if (user) {
         try {
@@ -1483,15 +1485,15 @@ export default function GamifiedDashboard() {
             level: typeof calculatedLevel === 'number' ? calculatedLevel : parseInt(String(calculatedLevel || 1), 10),
             current_xp: typeof levelData.currentXP === 'number' ? levelData.currentXP : parseInt(String(levelData.currentXP || 0), 10)
           }
-          
+
           console.log("准备更新数据库，数据:", updateData)
-          
+
           const { error, data: updateResult } = await supabase
             .from("users")
             .update(updateData)
             .eq("id", user.id)
             .select()
-          
+
           if (error) {
             console.error("Error updating user data:", error)
             console.error("更新失败的数据:", updateData)
@@ -1501,7 +1503,7 @@ export default function GamifiedDashboard() {
             setTotalXP(totalXP)
             return
           }
-          
+
           // 验证数据是否成功保存
           if (updateResult && updateResult.length > 0) {
             const savedData = updateResult[0]
@@ -1512,7 +1514,7 @@ export default function GamifiedDashboard() {
               level: savedData.level,
               current_xp: savedData.current_xp
             })
-            
+
             // 验证保存的数据是否与预期一致
             if (savedData.total_xp !== updateData.total_xp) {
               console.warn("⚠️ 保存的积分与预期不一致:", {
@@ -1523,7 +1525,7 @@ export default function GamifiedDashboard() {
           } else {
             console.warn("⚠️ 数据库更新成功但没有返回数据")
           }
-          
+
           // 保存任务状态到localStorage
           const today = new Date().toISOString().split('T')[0]
           const updatedTasks = tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t))
@@ -1541,7 +1543,7 @@ export default function GamifiedDashboard() {
 
     // 更新任务状态（因为任务只能从未完成变为完成，所以这里总是会更新）
     setTasks(tasks.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)))
-    
+
     // 如果升级，显示提示
     if (levelUp) {
       setTimeout(() => {
@@ -1661,11 +1663,11 @@ export default function GamifiedDashboard() {
     return (
       <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4">
         {/* 登录页面背景图片 - 哆啦A梦 */}
-        <div 
+        <div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
           style={{
-            backgroundImage: backgroundImageUrl 
-              ? `url(${backgroundImageUrl})` 
+            backgroundImage: backgroundImageUrl
+              ? `url(${backgroundImageUrl})`
               : 'url(https://wallpaperaccess.com/full/9503999.jpg)',
             backgroundAttachment: 'fixed',
             backgroundSize: 'cover',
@@ -1699,8 +1701,11 @@ export default function GamifiedDashboard() {
           <Card className="material-card bg-white border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-full bg-yellow-100 p-2.5">
-                  <Trophy className="h-5 w-5 text-yellow-600" />
+                <div className="relative">
+                  {/* Pet replaces Trophy or sits next to it. Let's make it the main icon */}
+                  <div className="scale-50 origin-left -ml-4 -mt-4">
+                    <PetCompanion level={level} streak={streak} tasksCompletedToday={tasks.filter(t => t.completed).length} />
+                  </div>
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">等级 {level}</p>
@@ -1712,13 +1717,13 @@ export default function GamifiedDashboard() {
                     </div>
                     {/* 等级进度条 */}
                     <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${(currentLevelXP / 100) * 100}%` }}
                       ></div>
-      </div>
-      </div>
-      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1729,9 +1734,9 @@ export default function GamifiedDashboard() {
               <div className="flex items-center justify-center gap-2 mb-1">
                 <div className="rounded-full bg-blue-100 p-1.5">
                   <Zap className="h-4 w-4 text-blue-600" />
-      </div>
+                </div>
                 <h1 className="text-2xl font-medium text-gray-900">智慧少年学习助手</h1>
-                  </div>
+              </div>
               <p className="text-sm text-gray-600">坚持就是胜利,你做得太棒了!</p>
             </CardContent>
           </Card>
@@ -1755,20 +1760,19 @@ export default function GamifiedDashboard() {
           <Card className="material-card bg-white border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                  <button
+                <button
                   onClick={openDailyChest}
                   disabled={!canOpenChest || isOpeningChest}
-                  className={`relative rounded-full p-2.5 transition-all duration-300 ${
-                    canOpenChest
+                  className={`relative rounded-full p-2.5 transition-all duration-300 ${canOpenChest
                       ? "bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 cursor-pointer transform hover:scale-110 animate-pulse"
                       : "bg-gray-100 cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   <Gift className={`h-5 w-5 ${canOpenChest ? "text-white" : "text-gray-400"}`} />
                   {canOpenChest && (
                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-ping"></div>
                   )}
-                  </button>
+                </button>
                 <div className="flex-1">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">每日宝箱</p>
                   {isOpeningChest ? (
@@ -1778,75 +1782,75 @@ export default function GamifiedDashboard() {
                   ) : (
                     <p className="text-sm font-semibold text-gray-400">今日已开启</p>
                   )}
-                  </div>
                 </div>
+              </div>
             </CardContent>
           </Card>
 
           {/* 用户菜单 */}
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Button
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Button
                 variant="ghost"
-                    size="sm"
-                    onClick={() => setShowThemeMenu(!showThemeMenu)}
+                size="sm"
+                onClick={() => setShowThemeMenu(!showThemeMenu)}
                 className="h-9 w-9 p-0"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+              {showThemeMenu && (
+                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      setTheme("light")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-t-lg"
+                  >
+                    <Sun className="h-4 w-4" />
+                    <span>浅色</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTheme("dark")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                  >
+                    <Moon className="h-4 w-4" />
+                    <span>深色</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTheme("system")
+                      setShowThemeMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
                   >
                     <Palette className="h-4 w-4" />
-                  </Button>
-                  {showThemeMenu && (
-                <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
-                      <button
-                        onClick={() => {
-                          setTheme("light")
-                          setShowThemeMenu(false)
-                        }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-t-lg"
-                      >
-                        <Sun className="h-4 w-4" />
-                        <span>浅色</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTheme("dark")
-                          setShowThemeMenu(false)
-                        }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                      >
-                        <Moon className="h-4 w-4" />
-                        <span>深色</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTheme("system")
-                          setShowThemeMenu(false)
-                        }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                      >
-                        <Palette className="h-4 w-4" />
-                        <span>跟随系统</span>
-                      </button>
+                    <span>跟随系统</span>
+                  </button>
                   <div className="border-t border-gray-200"></div>
-                      <button
-                        onClick={() => {
-                          backgroundInputRef.current?.click()
-                          setShowThemeMenu(false)
-                        }}
+                  <button
+                    onClick={() => {
+                      backgroundInputRef.current?.click()
+                      setShowThemeMenu(false)
+                    }}
                     className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-b-lg"
-                      >
-                        <Upload className="h-4 w-4" />
-                        <span>更换背景</span>
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    ref={backgroundInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleBackgroundUpload}
-                    className="hidden"
-                  />
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>更换背景</span>
+                  </button>
                 </div>
+              )}
+              <input
+                ref={backgroundInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBackgroundUpload}
+                className="hidden"
+              />
+            </div>
             {/* 用户信息区域 */}
             <div className="flex items-center gap-2">
               <div className="relative group">
@@ -1883,13 +1887,18 @@ export default function GamifiedDashboard() {
             >
               <X className="h-4 w-4" />
             </Button>
-                </div>
-              </div>
+          </div>
+        </div>
+
+        {/* 冒险地图 */}
+        <div className="mb-6 w-full">
+          <JourneyMap currentLevel={level} totalLevels={50} />
+        </div>
 
         {/* Main Layout */}
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           {/* 左侧：每日任务 */}
-                  <div>
+          <div>
             {/* 任务标题栏 - Material Design */}
             <div className="mb-4 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 p-4 material-card-elevated shadow-md">
               <div className="flex items-center justify-between">
@@ -1910,7 +1919,7 @@ export default function GamifiedDashboard() {
               {tasks.map((task) => {
                 const DifficultyIcon = getDifficultyIcon(task.difficulty)
                 const taskType = task.id <= 2 ? "固定任务" : "AI 任务"
-                
+
                 // 根据任务类型选择图标
                 let TaskIcon = BookOpen
                 if (task.id === 1) {
@@ -1924,9 +1933,8 @@ export default function GamifiedDashboard() {
                 return (
                   <Card
                     key={task.id}
-                    className={`material-card bg-white border-0 shadow-sm transition-shadow ${
-                      task.completed ? "opacity-60 cursor-not-allowed" : "hover:shadow-md cursor-pointer"
-                    }`}
+                    className={`material-card bg-white border-0 shadow-sm transition-shadow ${task.completed ? "opacity-60 cursor-not-allowed" : "hover:shadow-md cursor-pointer"
+                      }`}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
@@ -1938,9 +1946,8 @@ export default function GamifiedDashboard() {
                         {/* 任务内容 */}
                         <div className="flex-1 min-w-0">
                           <h3
-                            className={`mb-2 text-sm font-medium leading-snug ${
-                              task.completed ? "text-gray-400 line-through" : "text-gray-800"
-                            }`}
+                            className={`mb-2 text-sm font-medium leading-snug ${task.completed ? "text-gray-400 line-through" : "text-gray-800"
+                              }`}
                           >
                             {task.text}
                           </h3>
@@ -1959,11 +1966,10 @@ export default function GamifiedDashboard() {
                         <button
                           onClick={() => !task.completed && toggleTask(task.id)}
                           disabled={task.completed}
-                          className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 ${
-                            task.completed
+                          className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 ${task.completed
                               ? "border-green-500 bg-green-500 cursor-not-allowed opacity-60"
                               : "border-gray-300 hover:border-gray-400 bg-white cursor-pointer"
-                          }`}
+                            }`}
                           aria-label={task.completed ? "已完成" : "完成任务"}
                         >
                           {task.completed && (
@@ -1981,11 +1987,10 @@ export default function GamifiedDashboard() {
             <Button
               onClick={refreshTasks}
               variant="outline"
-              className={`mt-4 w-full font-medium rounded-lg shadow-sm ${
-                allAITasksCompleted() 
-                  ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed" 
+              className={`mt-4 w-full font-medium rounded-lg shadow-sm ${allAITasksCompleted()
+                  ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
                   : "border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400"
-              }`}
+                }`}
               disabled={isGeneratingTasks || allAITasksCompleted()}
             >
               {isGeneratingTasks ? (
@@ -2006,7 +2011,7 @@ export default function GamifiedDashboard() {
               )}
             </Button>
 
-                      </div>
+          </div>
 
           {/* 右侧：兑换商店和AI助手 */}
           <div className="space-y-4">
@@ -2024,7 +2029,7 @@ export default function GamifiedDashboard() {
                     <Coins className="h-4 w-4 text-yellow-600" />
                     <span className="text-sm font-medium text-gray-700">余额: {goldCoins}</span>
                   </div>
-            </div>
+                </div>
 
                 <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto">
                   {shopItems.map((item) => {
@@ -2036,29 +2041,28 @@ export default function GamifiedDashboard() {
                     return (
                       <Card
                         key={item.id}
-                        className={`material-card bg-white border-0 shadow-sm hover:shadow-md transition-shadow ${
-                          isPurchased ? "opacity-60" : ""
-                        }`}
+                        className={`material-card bg-white border-0 shadow-sm hover:shadow-md transition-shadow ${isPurchased ? "opacity-60" : ""
+                          }`}
                       >
                         <CardContent className="p-4">
                           <div className="flex flex-col">
                             <div className="flex items-start gap-3 mb-2">
                               <div className="mt-0.5 rounded-lg p-2 bg-gray-100">
                                 <ItemIcon className="h-5 w-5 text-gray-700" />
-                  </div>
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                              {item.name}
-                            </p>
-                  </div>
-                        </div>
+                                  {item.name}
+                                </p>
+                              </div>
+                            </div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
                               <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                                 ☆{item.cost} 金币
                               </span>
-                      </div>
-                <Button
+                            </div>
+                            <Button
                               onClick={() => {
                                 if (isPurchased) {
                                   alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
@@ -2070,15 +2074,15 @@ export default function GamifiedDashboard() {
                               }}
                               disabled={isPurchased || !canAfford}
                               className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-                >
+                            >
                               {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "金币不足"}
-                </Button>
-                </div>
-              </CardContent>
-            </Card>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )
                   })}
-          </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -2089,7 +2093,7 @@ export default function GamifiedDashboard() {
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg bg-blue-100 p-1.5">
                       <MessageCircle className="h-4 w-4 text-blue-700" />
-                  </div>
+                    </div>
                     <h3 className="text-lg font-medium text-gray-900">AI 学习助手</h3>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2146,7 +2150,7 @@ export default function GamifiedDashboard() {
                       </Button>
                     </div>
                     <p className="text-xs text-gray-600 mb-3">说出或输入你想听的故事类型和大纲，例如："讲一个关于太空探险的故事，主角是一只勇敢的小猫"</p>
-                    
+
                     <div className="flex gap-2 mb-3">
                       <textarea
                         value={storyPrompt}
@@ -2158,11 +2162,10 @@ export default function GamifiedDashboard() {
                       <Button
                         onClick={toggleListening}
                         size="sm"
-                        className={`rounded-lg px-3 py-2 ${
-                          isListening 
-                            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                        className={`rounded-lg px-3 py-2 ${isListening
+                            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                             : 'bg-blue-500 hover:bg-blue-600'
-                        } text-white transition-colors`}
+                          } text-white transition-colors`}
                       >
                         {isListening ? (
                           <MicOff className="h-5 w-5" />
@@ -2171,14 +2174,14 @@ export default function GamifiedDashboard() {
                         )}
                       </Button>
                     </div>
-                    
+
                     {isListening && (
                       <div className="flex items-center gap-2 mb-3 text-sm text-red-600">
                         <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
                         正在聆听...请说话
                       </div>
                     )}
-                    
+
                     <div className="flex gap-2">
                       <Button
                         onClick={() => {
@@ -2254,15 +2257,14 @@ export default function GamifiedDashboard() {
                         className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[85%] rounded-lg p-3 text-sm ${
-                            msg.role === "user"
+                          className={`max-w-[85%] rounded-lg p-3 text-sm ${msg.role === "user"
                               ? "bg-blue-600 text-white"
                               : "bg-gray-100 text-gray-800"
-                          }`}
+                            }`}
                         >
                           <p className="whitespace-pre-wrap">{msg.content}</p>
-                          </div>
                         </div>
+                      </div>
                     ))
                   )}
                   {isChatting && (
@@ -2289,7 +2291,7 @@ export default function GamifiedDashboard() {
                     disabled={isChatting}
                     className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                <Button
+                  <Button
                     onClick={sendChatMessage}
                     disabled={isChatting || !chatInput.trim()}
                     className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -2299,7 +2301,7 @@ export default function GamifiedDashboard() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                </Button>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -2322,15 +2324,15 @@ export default function GamifiedDashboard() {
                   <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 border border-blue-200">
                     <Trophy className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">累计积分: {totalXP.toLocaleString()}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowShop(false)}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowShop(false)}
                     className="h-8 w-8 text-gray-600 hover:bg-gray-100"
-                >
+                  >
                     <X className="h-5 w-5" />
-                </Button>
+                  </Button>
                 </div>
               </div>
 
@@ -2362,9 +2364,8 @@ export default function GamifiedDashboard() {
                   return (
                     <Card
                       key={item.id}
-                      className={`material-card bg-white border border-gray-200 ${
-                        isPurchased ? "opacity-60" : ""
-                      }`}
+                      className={`material-card bg-white border border-gray-200 ${isPurchased ? "opacity-60" : ""
+                        }`}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
@@ -2373,8 +2374,8 @@ export default function GamifiedDashboard() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-medium mb-1 ${isPurchased ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                            {item.name}
-                          </p>
+                              {item.name}
+                            </p>
                             <p className="text-xs text-gray-500 mb-2">
                               {item.id === 1 && "看你最喜欢的动画片。"}
                               {item.id === 2 && "享受美味的零食时光。"}
@@ -2385,8 +2386,8 @@ export default function GamifiedDashboard() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs text-gray-500">已兑换: {purchasedCount}次</span>
                               <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">☆{item.cost} 金币</span>
-                      </div>
-                      <Button
+                            </div>
+                            <Button
                               onClick={() => {
                                 if (isPurchased) {
                                   alert("你今天已经兑换过这个商品了！明天可以再次兑换。")
@@ -2398,10 +2399,10 @@ export default function GamifiedDashboard() {
                               }}
                               disabled={isPurchased || !canAfford}
                               className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
+                            >
                               {isPurchased ? "今日已兑换" : canAfford ? "立即兑换" : "金币不足"}
-                      </Button>
-                    </div>
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -2491,7 +2492,7 @@ export default function GamifiedDashboard() {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-600 mb-3">说出或输入你想听的故事类型和大纲</p>
-                  
+
                   <div className="flex gap-2 mb-3">
                     <textarea
                       value={storyPrompt}
@@ -2503,11 +2504,10 @@ export default function GamifiedDashboard() {
                     <Button
                       onClick={toggleListening}
                       size="sm"
-                      className={`rounded-lg px-3 py-2 ${
-                        isListening 
-                          ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                      className={`rounded-lg px-3 py-2 ${isListening
+                          ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                           : 'bg-blue-500 hover:bg-blue-600'
-                      } text-white transition-colors`}
+                        } text-white transition-colors`}
                     >
                       {isListening ? (
                         <MicOff className="h-5 w-5" />
@@ -2516,14 +2516,14 @@ export default function GamifiedDashboard() {
                       )}
                     </Button>
                   </div>
-                  
+
                   {isListening && (
                     <div className="flex items-center gap-2 mb-3 text-sm text-red-600">
                       <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
                       正在聆听...请说话
                     </div>
                   )}
-                  
+
                   <div className="flex gap-2">
                     <Button
                       onClick={() => {
@@ -2599,11 +2599,10 @@ export default function GamifiedDashboard() {
                       className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          msg.role === "user"
+                        className={`max-w-[80%] rounded-lg p-3 ${msg.role === "user"
                             ? "bg-purple-500 text-white"
                             : "bg-gray-100 text-gray-800"
-                        }`}
+                          }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                       </div>
@@ -2710,10 +2709,10 @@ export default function GamifiedDashboard() {
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600">
                     需要花费 <span className="font-semibold text-lg text-purple-600">{showPurchaseConfirm.cost}</span> 金币
-                </p>
+                  </p>
                   <p className="text-sm text-gray-600">
                     当前余额: <span className="font-semibold text-base text-gray-800">{goldCoins}</span>
-                </p>
+                  </p>
                 </div>
                 <p className="mt-4 text-xs text-gray-500">
                   每个商品每天只能兑换一次，明天可以再次兑换
@@ -2783,19 +2782,19 @@ export default function GamifiedDashboard() {
                           <div className="flex items-center gap-3">
                             <div className="rounded-lg p-2 bg-gray-100">
                               <ItemIcon className="h-5 w-5 text-gray-600" />
-                          </div>
+                            </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-gray-800 mb-1">
-                              {purchasedItem.item_name}
-                            </p>
+                                {purchasedItem.item_name}
+                              </p>
                               <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                                 <span className="text-xs text-gray-500">已兑换</span>
                                 <span className="text-sm font-semibold text-gray-800">{purchasedItem.count}</span>
                                 <span className="text-xs text-gray-500">次</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
                         </CardContent>
                       </Card>
                     )
